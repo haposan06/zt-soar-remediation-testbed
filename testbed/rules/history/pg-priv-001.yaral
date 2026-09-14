@@ -1,0 +1,24 @@
+rule pg_priv_001_privilege_grant_to_role {
+
+  meta:
+    author         = "thesis-lab"
+    description    = "Privilege grant to self or lateral role grant: a GRANT statement conferring privileges on another role, captured to surface self-granted or lateral privilege escalation inside the procurement database."
+    rule_id        = "PG-PRIV-001"
+    rule_name      = "Privilege grant to self or lateral role grant"
+    scenario_class = "S2"
+    severity       = "Critical"
+    mitre_attack   = "T1078.004"
+    data_source    = "Teleport db.session.query (TELEPORT_DB_AUDIT)"
+
+  events:
+    $e.metadata.event_type   = "GENERIC_EVENT"
+    $e.metadata.product_name = "Teleport"
+    $e.metadata.vendor_name  = "Gravitational"
+    $e.metadata.log_type     = "TELEPORT_DB_AUDIT"
+
+    // db_query matches ^\s*grant\b ... \bto\b
+    re.regex($e.target.resource.attribute.labels["db_query"], `(?i)^\s*grant\b.*\bto\b`)
+
+  condition:
+    $e
+}

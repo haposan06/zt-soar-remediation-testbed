@@ -1,0 +1,36 @@
+% !TEX root = ../main.tex
+%% generated from a 30-day detection count export of the deployed tenant (counts only; no detection content was read)
+\begin{table*}[t]
+\centering
+\caption{Detections raised by the deployed Teleport database rules, 8 August to 7 September 2026}
+\label{tab:app:proddetections}
+\small
+\begin{tabular}{@{}lccr@{}}
+\toprule
+Deployed rule & Enabled & Cadence & Detections \\
+\midrule
+\code{teleport\_db\_after\_hours} & yes & hourly & $\geq$\num{25000} \\
+\code{teleport\_db\_critical\_write} & yes & hourly & \num{18906} \\
+\code{teleport\_db\_data\_exfiltration} & yes & hourly & \num{1228} \\
+\code{teleport\_db\_destructive\_query\_critical} & yes & hourly & \num{216} \\
+\code{teleport\_db\_destructive\_query\_high} & yes & hourly & \num{4493} \\
+\code{teleport\_db\_file\_os\_ops} & yes & live & \num{0} \\
+\code{teleport\_db\_first\_time\_access} & no & hourly & \num{0} \\
+\code{teleport\_db\_lateral\_movement} & yes & hourly & \num{143} \\
+\code{teleport\_db\_privilege\_escalation} & yes & live & \num{187} \\
+\code{teleport\_db\_sensitive\_data} & yes & hourly & \num{0} \\
+\code{teleport\_db\_sql\_injection\_probe} & yes & live & \num{0} \\
+\code{teleport\_db\_without\_mfa} & yes & hourly & \num{14931} \\
+\midrule
+\multicolumn{3}{@{}l}{Total, twelve rules, thirty days} & $\geq$\num{65104} \\
+\multicolumn{3}{@{}l}{Lab, eleven rules, one simulated month} & \num{18} \\
+\bottomrule
+\end{tabular}
+\begin{minipage}{0.92\linewidth}
+\vspace{2pt}\scriptsize
+Counts were paged from the detection search API in pages of \num{1000} and capped at
+25 pages, so the after-hours figure is a floor. Only counts were retained. The
+tenant's SOAR case search returned no cases over the same period, so none of these
+detections entered a case workflow with a human approval step.
+\end{minipage}
+\end{table*}

@@ -1,0 +1,35 @@
+rule pg_tamp_003_obfuscated_sql_construction {
+
+  meta:
+    author         = "thesis-lab"
+    description    = "Obfuscated SQL construction: a statement built with chr() character concatenation, with inline comments spliced inside a SQL keyword, or with deliberately mangled mixed-case keywords, all of which indicate evasion of naive string-matching controls."
+    rule_id        = "PG-TAMP-003"
+    rule_name      = "Obfuscated SQL construction"
+    scenario_class = "S3"
+    severity       = "High"
+    mitre_attack   = "T1027"
+    data_source    = "Teleport db.session.query, log type TELEPORT_ACCESS_PLANE, product TELEPORT_DB_AUDIT"
+
+  events:
+    // source scoping, verified against live TELEPORT_ACCESS_PLANE events (custom parser)
+    $e.metadata.log_type           = "TELEPORT_ACCESS_PLANE"
+    $e.metadata.product_name       = "TELEPORT_DB_AUDIT"
+    $e.metadata.vendor_name        = "TELEPORT"
+    $e.metadata.event_type         = "USER_RESOURCE_ACCESS"
+    $e.metadata.product_event_type = "db.session.query"
+
+    // any one of the three obfuscation signatures
+    (
+      // 1. chr() character concatenation
+      re.regex($e.security_result.description, `(?i)chr\s*\(\s*[0-9]+\s*\)`) or
+
+      // 2. inline comment spliced inside a keyword
+      re.regex($e.security_result.description, `(?i)(sel/\*.*\*/ect|del/\*.*\*/ete|up/\*.*\*/date|dr/\*.*\*/op|trun/\*.*\*/cate)`) or
+
+      // 3. mixed-case keyword mangling (case-SENSITIVE by design: no (?i) flag)
+      re.regex($e.security_result.description, `(sElEcT|dElEtE|uPdAtE|dRoP|tRuNcAtE|SeLeCt|DeLeTe|UpDaTe|DrOp|TrUnCaTe)`)
+    )
+
+  condition:
+    $e
+}

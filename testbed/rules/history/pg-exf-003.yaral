@@ -1,0 +1,46 @@
+rule pg_exf_003_out_of_hours_paginated_bulk_read {
+
+  meta:
+    author         = "thesis-lab"
+    description    = "Sustained out-of-hours paginated bulk read: five or more paginated SELECT statements against sensitive procurement tables within one session, all executed outside the 08:00-16:00 simulated working window, cumulatively returning more than 10000 rows."
+    rule_id        = "PG-EXF-003"
+    rule_name      = "Sustained out-of-hours paginated bulk read"
+    scenario_class = "S1"
+    severity       = "High"
+    mitre_attack   = "T1213, T1030"
+    data_source    = "Teleport db.session.query (TELEPORT_DB_AUDIT)"
+
+  events:
+    $e.metadata.event_type   = "GENERIC_EVENT"
+    $e.metadata.product_name = "Teleport"
+    $e.metadata.vendor_name  = "Gravitational"
+    $e.metadata.log_type     = "TELEPORT_DB_AUDIT"
+
+    // db_query matches ^\s*select\b
+    re.regex($e.target.resource.attribute.labels["db_query"], `(?i)^\s*select\b`)
+
+    // db_query is paginated (OFFSET or LIMIT)
+    re.regex($e.target.resource.attribute.labels["db_query"], `(?i)\boffset\b|\blimit\b`)
+
+    // db_query matches the sensitive-table regex
+    re.regex($e.target.resource.attribute.labels["db_query"], `(?i)(employees|vendors|payments|bids)`)
+
+    // sim_hour outside 08..16 inclusive
+    (
+      strings.to_int($e.target.resource.attribute.labels["sim_hour"]) < 8 or
+      strings.to_int($e.target.resource.attribute.labels["sim_hour"]) > 16
+    )
+
+    // aggregation key
+    $session_id = $e.target.resource.attribute.labels["session_id"]
+
+  match:
+    $session_id over 1h
+
+  outcome:
+    $stmt_count = count($e.metadata.id)
+    $total_rows = sum(strings.to_int($e.target.resource.attribute.labels["rows"]))
+
+  condition:
+    #e >= 5 and $total_rows > 10000
+}

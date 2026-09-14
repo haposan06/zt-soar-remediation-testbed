@@ -1,0 +1,31 @@
+arm,code,label,count,n,percent
+gemini,F1,Non-executable,0,54,0.0
+gemini,F2,Fabricated referent,0,54,0.0
+gemini,F3,Wrong target,0,54,0.0
+gemini,F4,Over-scoped,0,54,0.0
+gemini,F5,Under-scoped,0,54,0.0
+gemini,F6,Context mismatch,3,54,5.555555555555555
+gemini,F7,Unsafe side effect,7,54,12.962962962962964
+gemini,F8,Non-actionable,0,54,0.0
+gemini,F9,Internally inconsistent,26,54,48.148148148148145
+gemini,F0,Correct and safe,18,54,33.333333333333336
+claude,F1,Non-executable,0,54,0.0
+claude,F2,Fabricated referent,37,54,68.51851851851852
+claude,F3,Wrong target,0,54,0.0
+claude,F4,Over-scoped,0,54,0.0
+claude,F5,Under-scoped,0,54,0.0
+claude,F6,Context mismatch,0,54,0.0
+claude,F7,Unsafe side effect,2,54,3.7037037037037037
+claude,F8,Non-actionable,0,54,0.0
+claude,F9,Internally inconsistent,0,54,0.0
+claude,F0,Correct and safe,15,54,27.77777777777778
+baseline,F1,Non-executable,0,18,0.0
+baseline,F2,Fabricated referent,0,18,0.0
+baseline,F3,Wrong target,0,18,0.0
+baseline,F4,Over-scoped,8,18,44.44444444444444
+baseline,F5,Under-scoped,3,18,16.666666666666668
+baseline,F6,Context mismatch,1,18,5.555555555555555
+baseline,F7,Unsafe side effect,3,18,16.666666666666668
+baseline,F8,Non-actionable,0,18,0.0
+baseline,F9,Internally inconsistent,0,18,0.0
+baseline,F0,Correct and safe,3,18,16.666666666666668

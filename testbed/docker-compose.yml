@@ -1,0 +1,77 @@
+# Monash thesis lab: Teleport 17 (auth+proxy+db_service) in front of PostgreSQL 16.
+# Everything is local; nothing here talks to any other cluster.
+services:
+  teleport:
+    image: public.ecr.aws/gravitational/teleport-distroless:17
+    container_name: thesis-teleport
+    hostname: teleport
+    restart: unless-stopped
+    # The distroless image entrypoint is already:
+    #   dumb-init teleport start -c /etc/teleport/teleport.yaml
+    # `command` is appended to it. --insecure makes Teleport's own internal
+    # clients (the Database Service's reverse-tunnel agent) accept the proxy's
+    # self-signed certificate; without it the tunnel never comes up and
+    # `tsh db ls` shows no databases. Lab-only.
+    command: ["--insecure"]
+    ports:
+      - "127.0.0.1:3080:3080"   # web UI / proxy / multiplexed db tunnel
+      - "127.0.0.1:3025:3025"   # auth service
+    volumes:
+      - ./teleport/teleport.yaml:/etc/teleport/teleport.yaml:ro
+      - teleport-data:/var/lib/teleport
+      - ./audit:/var/lib/teleport/log            # JSON audit events land here
+      - ./certs:/certs                            # tctl auth sign --out=/certs/server
+      - ./identities:/identities                  # tctl auth sign --user=... identity files
+    healthcheck:
+      # distroless: no shell and no curl, so probe with tctl over the local
+      # auth connector instead of an HTTP request.
+      test: ["CMD", "/usr/local/bin/tctl", "status"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+
+  postgres:
+    image: postgres:16
+    container_name: thesis-postgres
+    hostname: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: labonly-not-a-secret
+      POSTGRES_DB: procurement
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/10-init.sql:ro
+      - ./postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+      - ./postgres/pg-entrypoint.sh:/usr/local/bin/pg-entrypoint.sh:ro
+      - ./certs:/certs-src:ro                     # Teleport-signed server.{crt,key,cas}
+    # Wrapper copies the Teleport-signed certs to a private dir with 0600/postgres
+    # ownership (a bind mount cannot satisfy Postgres' key permission check).
+    entrypoint: ["/usr/local/bin/pg-entrypoint.sh"]
+    command:
+      - "postgres"
+      - "-c"
+      - "ssl=on"
+      - "-c"
+      - "ssl_cert_file=/var/lib/postgresql/certs/server.crt"
+      - "-c"
+      - "ssl_key_file=/var/lib/postgresql/certs/server.key"
+      - "-c"
+      - "ssl_ca_file=/var/lib/postgresql/certs/server.cas"
+      - "-c"
+      - "hba_file=/etc/postgresql/pg_hba.conf"
+      - "-c"
+      - "log_statement=all"
+      - "-c"
+      - "log_connections=on"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d procurement -h /var/run/postgresql"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+
+volumes:
+  teleport-data:
+  pg-data:

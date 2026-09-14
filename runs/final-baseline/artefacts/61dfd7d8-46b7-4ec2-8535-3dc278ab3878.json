@@ -1,0 +1,104 @@
+{
+  "artefact_id": "61dfd7d8-46b7-4ec2-8535-3dc278ab3878",
+  "alert_id": "ALRT-0006",
+  "rule_id": "PG-PRIV-001",
+  "scenario_class": "B1",
+  "arm": "baseline",
+  "model_id": "template-playbook",
+  "model_version": "playbook-table-v1",
+  "prompt_version": "soar-remediation-v1.1.0",
+  "prompt_fingerprint": "bba831dba86cd027",
+  "temperature": null,
+  "top_p": null,
+  "max_tokens": 8192,
+  "json_mode": false,
+  "thinking_budget": 0,
+  "sample_index": 0,
+  "request_timestamp": "2026-09-12T15:06:11Z",
+  "latency_ms": 0.01,
+  "raw_response_text": "{\n  \"rationale\": \"Playbook PG-PRIV-001 matched on alert ALRT-0006. Privileged role dba was used by carol.tan@eproc.test from 10.20.9.5 in session 4e03bfe3-1ee5-4aec-9d26-8a001bdb6880. The standing playbook for privileged role usage locks the Teleport identity for four hours so that an approver can confirm the activity was authorised before access resumes, and exports the session recording for review.\",\n  \"language\": \"tsh\",\n  \"script\": \"# Playbook PG-PRIV-002, alert ALRT-0006\\ntctl lock --user=carol.tan@eproc.test --ttl=4h \\\\\\n  --message=\\\"Held under alert ALRT-0006 pending review\\\"\\ntsh play 4e03bfe3-1ee5-4aec-9d26-8a001bdb6880 > /var/tmp/alrt_0006_session.txt\\n\",\n  \"rollback\": \"tctl rm lock/<lock-name-printed-by-the-lock-command>\\n\",\n  \"confidence\": \"medium\"\n}",
+  "parse_ok": true,
+  "parse_error": null,
+  "parse_repaired": false,
+  "strict_parse_error": null,
+  "rationale": "Playbook PG-PRIV-001 matched on alert ALRT-0006. Privileged role dba was used by carol.tan@eproc.test from 10.20.9.5 in session 4e03bfe3-1ee5-4aec-9d26-8a001bdb6880. The standing playbook for privileged role usage locks the Teleport identity for four hours so that an approver can confirm the activity was authorised before access resumes, and exports the session recording for review.",
+  "language": "tsh",
+  "script": "# Playbook PG-PRIV-002, alert ALRT-0006\ntctl lock --user=carol.tan@eproc.test --ttl=4h \\\n  --message=\"Held under alert ALRT-0006 pending review\"\ntsh play 4e03bfe3-1ee5-4aec-9d26-8a001bdb6880 > /var/tmp/alrt_0006_session.txt\n",
+  "rollback": "tctl rm lock/<lock-name-printed-by-the-lock-command>\n",
+  "confidence": "medium",
+  "extra_keys": [],
+  "missing_keys": [],
+  "attempts": 1,
+  "endpoint": "local",
+  "finish_reason": "TEMPLATE_COMPLETE",
+  "truncated": false,
+  "reasoning_mode": "default",
+  "reasoning_detail": "",
+  "harness_version": "generate-v1.1.0",
+  "alert_summary": {
+    "alert_id": "ALRT-0006",
+    "rule_id": "PG-PRIV-001",
+    "rule_name": "Privilege grant to self or lateral role grant",
+    "severity_hint": "critical",
+    "teleport_user": "carol.tan@eproc.test",
+    "db_role": "dba",
+    "source_ip": "10.20.9.5",
+    "db_name": "procurement",
+    "session_id": "4e03bfe3-1ee5-4aec-9d26-8a001bdb6880",
+    "first_seen": "2026-08-08T01:00:00Z",
+    "last_seen": "2026-08-08T01:08:00Z",
+    "event_count": 1,
+    "affected_objects": [
+      "public.contracts"
+    ],
+    "attack_technique": [
+      "T1078.004",
+      "T1098"
+    ],
+    "evidence": [
+      {
+        "ts": "2026-08-08T01:00:00Z",
+        "statement": "SELECT rolname FROM pg_roles WHERE rolname = 'analyst_ro'",
+        "rows": 1,
+        "duration_ms": 1.87,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-08T01:04:00Z",
+        "statement": "GRANT SELECT ON public.contracts TO analyst_ro",
+        "rows": 0,
+        "duration_ms": 1.81,
+        "matched_rules": [
+          "PG-PRIV-001"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-08T01:08:00Z",
+        "statement": "SELECT grantee, table_name, privilege_type FROM information_schema.role_table_grants WHERE grantee = 'analyst_ro' LIMIT 20",
+        "rows": 6,
+        "duration_ms": 3.27,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      }
+    ],
+    "baseline_context": {
+      "typical_daily_rows": 372,
+      "typical_hours_utc": "08:00-17:00",
+      "usual_source_ips": [
+        "10.20.9.5"
+      ],
+      "note": "Role dba normally returns about 372 rows per simulated day across the 14-day baseline, almost all inside 08:00-17:00."
+    },
+    "change_window": {
+      "ticket": "CHG-2026-0421",
+      "approved_by": "it.change.board@eproc.test",
+      "starts_at": "2026-08-08T00:00:00Z",
+      "ends_at": "2026-08-08T03:00:00Z"
+    }
+  }
+}

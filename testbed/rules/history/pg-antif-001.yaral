@@ -1,0 +1,27 @@
+rule pg_antif_001_audit_log_tampering {
+
+  meta:
+    author         = "thesis-lab"
+    description    = "Audit log tampering: a DELETE, UPDATE, TRUNCATE or DROP TABLE statement targeting the audit_log table, an anti-forensic attempt to remove the in-database record of prior activity."
+    rule_id        = "PG-ANTIF-001"
+    rule_name      = "Audit log tampering"
+    scenario_class = "S3"
+    severity       = "Critical"
+    mitre_attack   = "T1070"
+    data_source    = "Teleport db.session.query (TELEPORT_DB_AUDIT)"
+
+  events:
+    $e.metadata.event_type   = "GENERIC_EVENT"
+    $e.metadata.product_name = "Teleport"
+    $e.metadata.vendor_name  = "Gravitational"
+    $e.metadata.log_type     = "TELEPORT_DB_AUDIT"
+
+    // db_query matches a destructive DML or DDL verb
+    re.regex($e.target.resource.attribute.labels["db_query"], `(?i)^\s*(delete\s+from|update|truncate|drop\s+table)\b`)
+
+    // db_query targets the audit_log table
+    re.regex($e.target.resource.attribute.labels["db_query"], `(?i)\b(public\.)?audit_log\b`)
+
+  condition:
+    $e
+}

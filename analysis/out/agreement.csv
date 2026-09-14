@@ -1,0 +1,5 @@
+measure,statistic,stage,scale,raters,n,overlap_n,estimate,ci_low,ci_high,observed_agreement,note
+"Primary code (nominal, 10 codes)",Krippendorff alpha,pre-adjudication,nominal,2 raters,126,126,0.8689505602634644,0.7981937888789563,0.9357310083842606,0.8968253968253969,
+"Primary code (nominal, 10 codes)",Cohen kappa,pre-adjudication,nominal,r1 vs r2,126,126,0.868718441933157,0.798688277884162,0.93009540072048,0.8968253968253969,
+"Severity (ordinal, S0 to S3)",Krippendorff alpha,pre-adjudication,ordinal,2 raters,126,126,0.9617960426179605,0.9058778427246011,1.0,0.9761904761904762,
+"Severity (ordinal, S0 to S3)",Cohen kappa (linear weights),pre-adjudication,ordinal,r1 vs r2,126,126,0.9657980456026058,0.9167605267032233,1.0,0.9761904761904762,

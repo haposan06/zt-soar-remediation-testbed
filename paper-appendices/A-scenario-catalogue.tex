@@ -1,0 +1,324 @@
+% !TEX root = ../main.tex
+%% Scenario Catalogue and ATT&CK Mapping
+\section{Scenario Catalogue and ATT\&CK Mapping}
+\label{app:scenarios}
+
+This appendix specifies the five behaviour classes that were scripted against the
+laboratory testbed. Three are malicious, executed by an identity that Teleport had
+already authenticated and authorised. Two are benign: one representing routine
+traffic and one representing legitimate activity that is designed to trip a
+detection rule, so that the evaluation has a genuine negative class.
+
+\subsection{Synthetic database schema}
+\label{app:scenarios:schema}
+
+All activity ran against a single PostgreSQL~16 database, \code{procurement},
+holding a synthetic public-procurement schema in the \code{public} schema. No real
+records were used and no field was derived from any live system; every name,
+identifier and bank account is generated. Table~\ref{tab:app-schema} gives the tables
+as they exist in the running testbed, with seeded row counts read from the
+initialisation script rather than from the design document. A further table,
+\code{bids\_archive}, was seeded as a target for destructive statements.
+
+\begin{table}[H]
+\centering
+\caption{Synthetic \code{procurement} schema, as seeded before the corpus run}
+\label{tab:app-schema}
+\small
+\begin{tabularx}{\textwidth}{@{}lrX@{}}
+\toprule
+\textbf{Table} & \textbf{Rows} & \textbf{Columns} \\
+\midrule
+\code{employees} & 1,200 &
+\code{employee\_id}, \code{full\_name}, \code{email}, \code{department},
+\code{position}, \code{salary}$^\dagger$, \code{national\_id}$^\dagger$,
+\code{bank\_account}$^\dagger$, \code{hire\_date}, \code{manager\_id} \\
+\addlinespace
+\code{vendors} & 900 &
+\code{vendor\_id}, \code{legal\_name}, \code{tax\_id}$^\dagger$,
+\code{bank\_account}$^\dagger$, \code{owner\_name}, \code{risk\_rating},
+\code{blacklisted}, \code{created\_at} \\
+\addlinespace
+\code{tenders} & 500 &
+\code{tender\_id}, \code{reference\_no}, \code{title}, \code{category},
+\code{budget\_ceiling}, \code{opens\_at}, \code{closes\_at}, \code{status},
+\code{owner\_employee\_id} \\
+\addlinespace
+\code{bids} & 6,000 &
+\code{bid\_id}, \code{tender\_id}, \code{vendor\_id}, \code{bid\_amount}$^\ddagger$,
+\code{technical\_score}$^\ddagger$, \code{submitted\_at}, \code{sealed\_until},
+\code{status} \\
+\addlinespace
+\code{contracts} & 600 &
+\code{contract\_id}, \code{tender\_id}, \code{vendor\_id}, \code{awarded\_amount},
+\code{signed\_at}, \code{start\_date}, \code{end\_date}, \code{status} \\
+\addlinespace
+\code{payments} & 12,000 &
+\code{payment\_id}, \code{contract\_id}, \code{invoice\_no}, \code{amount},
+\code{paid\_at}, \code{approved\_by}, \code{bank\_account\_snapshot}$^\dagger$,
+\code{status} \\
+\addlinespace
+\code{audit\_log} & 2,500 &
+\code{audit\_id}, \code{occurred\_at}, \code{db\_user}, \code{teleport\_user},
+\code{session\_id}, \code{action}, \code{object\_schema}, \code{object\_name},
+\code{row\_count}, \code{statement\_digest}, \code{client\_addr} \\
+\bottomrule
+\end{tabularx}
+
+\vspace{2pt}
+\footnotesize $^\dagger$ Sensitive at all times.
+$^\ddagger$ Sensitive until \code{sealed\_until} has passed.
+\end{table}
+
+These are the counts at seeding. The corpus run changes them, which is the point of
+running it: after the fourteen days, \code{payments} holds 8,337 rows because the
+approved retention job in class~B1 deleted the rest, and \code{bids\_archive} no
+longer exists because a class~S3 statement dropped it. Any replication must reseed
+before comparing.
+
+{\sloppy Two views carry the access-control design that makes the attacks detectable.
+\code{public.employees\_public} exposes \code{employees} without \code{salary},
+\code{national\_id} or \code{bank\_account}; \code{public.bids\_public} exposes
+\code{bids} only for rows whose \code{sealed\_until} has passed. The reporting role is
+granted the views and not the base tables, so a read of \code{employees} or
+\code{bids} by that role is itself the signal rather than merely a large query.\par}
+
+Four database roles were defined, mirroring a conventional role-based access
+control deployment: \code{app\_service} (the application's connection pool),
+\code{analyst\_ro} (read-only reporting), \code{proc\_officer} (read and write on
+tenders and bids) and \code{dba} (administrative). Teleport mapped each human user
+to exactly one of the three human roles through its own role definitions, so the
+database role in an audit event is attributable to a named person.
+
+\subsection{Behaviour classes}
+\label{app:scenarios:classes}
+
+\begin{table}[H]
+\centering
+\caption{Behaviour classes, actors and MITRE ATT\&CK mapping}
+\label{tab:app-scenarios}
+\small
+\begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}p{2.9cm}Xl@{}}
+\toprule
+\textbf{Class} & \textbf{Actor role} & \textbf{Behaviour} & \textbf{ATT\&CK} \\
+\midrule
+B0 Routine &
+\code{app\_service}, \code{analyst\_ro}, \code{proc\_officer}, \code{dba} &
+Parameterised application queries, scheduled reports, ad-hoc analyst queries within
+working hours, routine index maintenance &
+n/a \\
+\addlinespace
+B1 Benign alerting &
+\code{analyst\_ro}, \code{dba} &
+Approved quarterly export run out of hours under a change ticket; authorised
+\code{GRANT} inside a maintenance window; scheduled retention \code{DELETE} on
+\code{payments} older than seven years &
+n/a \\
+\addlinespace
+S1 Data harvesting &
+\code{analyst\_ro} &
+Unbounded \code{SELECT} across \code{employees} and \code{bids}, repeated
+pagination, \code{COPY \dots{} TO STDOUT}, sustained out-of-hours session, row
+volume two orders of magnitude above the role baseline &
+T1213, T1530, T1078 \\
+\addlinespace
+S2 Privilege escalation &
+\code{proc\_officer} &
+\code{GRANT} of additional privileges to self, \code{ALTER ROLE \dots{} SUPERUSER},
+creation of a secondary role with the same rights, \code{ALTER DEFAULT PRIVILEGES} &
+T1098, T1548, T1078 \\
+\addlinespace
+S3 Destructive or obfuscated SQL &
+\code{dba} (or \code{proc\_officer} after S2) &
+\code{DELETE} without a predicate, \code{TRUNCATE}, \code{DROP TABLE}, mass
+\code{UPDATE} of bid values; the same statements re-expressed with inline comment
+splitting, \code{chr()} concatenation and case mangling to defeat literal pattern
+matching; \code{COPY \dots{} TO PROGRAM} &
+T1485, T1027, T1078 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Class S3 replaces the phrase ``insider SQL injection'' used in the research
+proposal. An insider who reaches the database through an identity-aware proxy holds
+valid credentials and a valid session, so the defining feature of SQL injection,
+namely subverting an application's input handling to reach the database at all, is
+absent. What remains, and what actually threatens the data, is destructive or
+deliberately obfuscated SQL issued directly by an authorised principal. The
+detection problem and the remediation problem both change accordingly, and
+Section~\ref{sec:method} adopts the corrected framing throughout.
+
+\subsection{Statement volumes}
+\label{app:scenarios:volumes}
+
+Table~\ref{tab:app:volumes} reports the realised corpus. The simulated window spans
+one working month. Attribution is exact rather than inferred: every statement carries
+a marker comment that joins it to its Teleport audit event, so all \num{47890}
+statements matched an audit event and none was left unattributable. The malicious
+base rate of \num{0.125}\,\% is the figure carried into
+Table~\ref{tab:base-rates} in Section~\ref{sec:method}.
+
+\begin{table}[htbp]
+\centering
+\caption{Realised corpus by scenario class}
+\label{tab:app:volumes}
+\begin{tabular}{@{}llrrr@{}}
+\toprule
+Class & Description & Sessions & Statements & Share \\
+\midrule
+B0 & Routine benign activity                       & 588 & \num{47807} & \num{99.826}\,\% \\
+B1 & Benign activity that trips a detector         &   6 & \num{23}    & \num{0.048}\,\% \\
+S1 & Bulk read and staged exfiltration             &   4 & \num{20}    & \num{0.042}\,\% \\
+S2 & Privilege escalation                          &   4 & \num{20}    & \num{0.042}\,\% \\
+S3 & Destructive or obfuscated SQL                 &   4 & \num{20}    & \num{0.042}\,\% \\
+\midrule
+\multicolumn{2}{@{}l}{Total}                       & 606 & \num{47890} & \num{100}\,\% \\
+\multicolumn{2}{@{}l}{Malicious (S1--S3)}          &  12 & \num{60}    & \num{0.125}\,\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Statements are unevenly distributed across the four database roles, in proportion to
+how each role is used: \code{app\_service} issued \num{33492} statements,
+\code{analyst\_ro} \num{8681}, \code{proc\_officer} \num{4725} and \code{dba}
+\num{992}. The \code{dba} role is the rarest in ordinary traffic and the most
+represented in class S3, which is the asymmetry the detection rules exploit.
+
+\subsection{Attack script inventory}
+\label{app:scenarios:scripts}
+
+Table~\ref{tab:app:steps} lists every one of the \num{60} injected statements in
+execution order, grouped by scenario. \emph{Rule} names the detection rule that fired
+on the session; a dash marks a scenario step that contributed no alert. Statements
+marked $\dagger$ were refused by PostgreSQL but still recorded by Teleport as
+successful, because the proxy records its own authorisation decision and not the
+engine's; this is the blind spot discussed in Section~\ref{sec:discussion}.
+
+\providecommand{\stmt}[1]{{\ttfamily\raggedright\hspace{0pt}#1}}
+\begin{footnotesize}
+\sloppy
+\begin{longtable}{@{}ll>{\raggedright\arraybackslash}p{0.52\textwidth}r@{}}
+\caption{Injected attack steps, in execution order}
+\label{tab:app:steps} \\
+\toprule
+Step & Role & Statement & Rows \\
+\midrule
+\endfirsthead
+\multicolumn{4}{@{}l}{\itshape Table~\ref{tab:app:steps} continued} \\
+\toprule
+Step & Role & Statement & Rows \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+\midrule
+\multicolumn{4}{@{}l}{\bfseries S1 data harvesting: paginated employee export} \\
+\multicolumn{4}{@{}l}{\itshape principal svc.app@eproc.test; rule ---} \\
+s12\_0 & app\_service & \stmt{SELECT count(\allowbreak{}*) FROM employees} & 1 \\
+s12\_1 & app\_service & \stmt{SELECT employee\_\allowbreak{}id,\allowbreak{} full\_\allowbreak{}name,\allowbreak{} email,\allowbreak{} salary,\allowbreak{} national\_\allowbreak{}id,\allowbreak{} bank\_\allowbreak{}account FROM employees ORDER BY employee\_\allowbreak{}id LIMIT 300 OFFSET 0} & 300 \\
+s12\_2 & app\_service & \stmt{SELECT employee\_\allowbreak{}id,\allowbreak{} full\_\allowbreak{}name,\allowbreak{} email,\allowbreak{} salary,\allowbreak{} national\_\allowbreak{}id,\allowbreak{} bank\_\allowbreak{}account FROM employees ORDER BY employee\_\allowbreak{}id LIMIT 300 OFFSET 300} & 300 \\
+s12\_3 & app\_service & \stmt{SELECT employee\_\allowbreak{}id,\allowbreak{} full\_\allowbreak{}name,\allowbreak{} email,\allowbreak{} salary,\allowbreak{} national\_\allowbreak{}id,\allowbreak{} bank\_\allowbreak{}account FROM employees ORDER BY employee\_\allowbreak{}id LIMIT 300 OFFSET 600} & 300 \\
+s12\_4 & app\_service & \stmt{SELECT employee\_\allowbreak{}id,\allowbreak{} full\_\allowbreak{}name,\allowbreak{} email,\allowbreak{} salary,\allowbreak{} national\_\allowbreak{}id,\allowbreak{} bank\_\allowbreak{}account FROM employees ORDER BY employee\_\allowbreak{}id LIMIT 300 OFFSET 900} & 300 \\
+s12\_5 & app\_service & \stmt{COPY (\allowbreak{}SELECT employee\_\allowbreak{}id,\allowbreak{} national\_\allowbreak{}id,\allowbreak{} bank\_\allowbreak{}account,\allowbreak{} salary FROM employees) TO STDOUT WITH CSV HEADER} & 1200 \\
+\midrule
+\multicolumn{4}{@{}l}{\bfseries S1 data harvesting: payment records exfiltration} \\
+\multicolumn{4}{@{}l}{\itshape principal eve.contractor@eproc.test; rule ---} \\
+s11\_0 & analyst\_ro & \stmt{SELECT count(\allowbreak{}*) FROM payments} & 1 \\
+s11\_1 & analyst\_ro & \stmt{SELECT payment\_\allowbreak{}id,\allowbreak{} invoice\_\allowbreak{}no,\allowbreak{} amount,\allowbreak{} bank\_\allowbreak{}account\_\allowbreak{}snapshot FROM payments} & 12000 \\
+s11\_2 & analyst\_ro & \stmt{SELECT p.\allowbreak{}payment\_\allowbreak{}id,\allowbreak{} p.\allowbreak{}bank\_\allowbreak{}account\_\allowbreak{}snapshot,\allowbreak{} v.\allowbreak{}legal\_\allowbreak{}name,\allowbreak{} v.\allowbreak{}bank\_\allowbreak{}account FROM payments p JOIN contracts c USING (\allowbreak{}contract\_\allowbreak{}id) JOIN vendors v USING (\allowbreak{}vendor\_\allowbreak{}id)} & 12000 \\
+s11\_3 & analyst\_ro & \stmt{COPY (\allowbreak{}SELECT payment\_\allowbreak{}id,\allowbreak{} invoice\_\allowbreak{}no,\allowbreak{} amount,\allowbreak{} bank\_\allowbreak{}account\_\allowbreak{}snapshot FROM payments) TO STDOUT WITH CSV HEADER} & 12000 \\
+\midrule
+\multicolumn{4}{@{}l}{\bfseries S1 data harvesting: sustained paginated exfiltration} \\
+\multicolumn{4}{@{}l}{\itshape principal eve.contractor@eproc.test; rule ---} \\
+s13\_0 & analyst\_ro & \stmt{SELECT current\_\allowbreak{}user,\allowbreak{} inet\_\allowbreak{}client\_\allowbreak{}addr(\allowbreak{})} & 1 \\
+s13\_1 & analyst\_ro & \stmt{SELECT payment\_\allowbreak{}id,\allowbreak{} contract\_\allowbreak{}id,\allowbreak{} amount,\allowbreak{} bank\_\allowbreak{}account\_\allowbreak{}snapshot FROM payments ORDER BY payment\_\allowbreak{}id LIMIT 2500 OFFSET 0} & 2500 \\
+s13\_2 & analyst\_ro & \stmt{SELECT payment\_\allowbreak{}id,\allowbreak{} contract\_\allowbreak{}id,\allowbreak{} amount,\allowbreak{} bank\_\allowbreak{}account\_\allowbreak{}snapshot FROM payments ORDER BY payment\_\allowbreak{}id LIMIT 2500 OFFSET 2500} & 2500 \\
+s13\_3 & analyst\_ro & \stmt{SELECT payment\_\allowbreak{}id,\allowbreak{} contract\_\allowbreak{}id,\allowbreak{} amount,\allowbreak{} bank\_\allowbreak{}account\_\allowbreak{}snapshot FROM payments ORDER BY payment\_\allowbreak{}id LIMIT 2500 OFFSET 5000} & 2500 \\
+s13\_4 & analyst\_ro & \stmt{SELECT payment\_\allowbreak{}id,\allowbreak{} contract\_\allowbreak{}id,\allowbreak{} amount,\allowbreak{} bank\_\allowbreak{}account\_\allowbreak{}snapshot FROM payments ORDER BY payment\_\allowbreak{}id LIMIT 2500 OFFSET 7500} & 2500 \\
+s13\_5 & analyst\_ro & \stmt{SELECT payment\_\allowbreak{}id,\allowbreak{} contract\_\allowbreak{}id,\allowbreak{} amount,\allowbreak{} bank\_\allowbreak{}account\_\allowbreak{}snapshot FROM payments ORDER BY payment\_\allowbreak{}id LIMIT 2500 OFFSET 10000} & 2000 \\
+s13\_6 & analyst\_ro & \stmt{COPY (\allowbreak{}SELECT * FROM payments) TO STDOUT WITH CSV HEADER} & 12000 \\
+\midrule
+\multicolumn{4}{@{}l}{\bfseries S1 data harvesting: vendor banking sweep} \\
+\multicolumn{4}{@{}l}{\itshape principal eve.contractor@eproc.test; rule ---} \\
+s10\_0 & analyst\_ro & \stmt{SELECT current\_\allowbreak{}user,\allowbreak{} session\_\allowbreak{}user} & 1 \\
+s10\_1 & analyst\_ro & \stmt{SELECT vendor\_\allowbreak{}id,\allowbreak{} legal\_\allowbreak{}name,\allowbreak{} tax\_\allowbreak{}id,\allowbreak{} bank\_\allowbreak{}account FROM vendors} & 900 \\
+s10\_2 & analyst\_ro & \stmt{SELECT vendor\_\allowbreak{}id,\allowbreak{} legal\_\allowbreak{}name,\allowbreak{} tax\_\allowbreak{}id,\allowbreak{} bank\_\allowbreak{}account,\allowbreak{} owner\_\allowbreak{}name FROM vendors ORDER BY vendor\_\allowbreak{}id} & 900 \\
+\midrule
+\multicolumn{4}{@{}l}{\bfseries S2 privilege escalation: attempted self-grant} \\
+\multicolumn{4}{@{}l}{\itshape principal eve.contractor@eproc.test; rule ---} \\
+s24\_0 & analyst\_ro & \stmt{SELECT current\_\allowbreak{}user} & 1 \\
+s24\_1 & analyst\_ro & \stmt{GRANT SELECT ON public.\allowbreak{}employees TO analyst\_\allowbreak{}ro}$\dagger$ & 0 \\
+s24\_2 & analyst\_ro & \stmt{SELECT count(\allowbreak{}*) FROM employees}$\dagger$ & 0 \\
+\midrule
+\multicolumn{4}{@{}l}{\bfseries S2 privilege escalation: escalate then cover tracks} \\
+\multicolumn{4}{@{}l}{\itshape principal carol.tan@eproc.test; rule ---} \\
+s27\_0 & dba & \stmt{SELECT current\_\allowbreak{}user,\allowbreak{} session\_\allowbreak{}user} & 1 \\
+s27\_1 & dba & \stmt{CREATE ROLE bd\_\allowbreak{}admin LOGIN SUPERUSER} & 0 \\
+s27\_2 & dba & \stmt{GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO bd\_\allowbreak{}admin} & 0 \\
+s27\_3 & dba & \stmt{ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO bd\_\allowbreak{}admin} & 0 \\
+s27\_4 & dba & \stmt{DELETE FROM audit\_\allowbreak{}log WHERE action = 'UPDATE'} & 8 \\
+s27\_5 & dba & \stmt{UPDATE audit\_\allowbreak{}log SET action = 'SELECT' WHERE action = 'INSERT'} & 6 \\
+s27\_6 & dba & \stmt{DROP OWNED BY bd\_\allowbreak{}admin; DROP ROLE bd\_\allowbreak{}admin} & 0 \\
+\midrule
+\multicolumn{4}{@{}l}{\bfseries S2 privilege escalation: role promoted to superuser} \\
+\multicolumn{4}{@{}l}{\itshape principal carol.tan@eproc.test; rule ---} \\
+s25\_0 & dba & \stmt{SELECT rolname,\allowbreak{} rolsuper FROM pg\_\allowbreak{}roles ORDER BY rolsuper DESC LIMIT 10} & 10 \\
+s25\_1 & dba & \stmt{ALTER ROLE analyst\_\allowbreak{}ro SUPERUSER} & 0 \\
+s25\_2 & dba & \stmt{SELECT rolname,\allowbreak{} rolsuper FROM pg\_\allowbreak{}roles WHERE rolname = 'analyst\_\allowbreak{}ro'} & 1 \\
+s25\_3 & dba & \stmt{ALTER ROLE analyst\_\allowbreak{}ro NOSUPERUSER} & 0 \\
+\midrule
+\multicolumn{4}{@{}l}{\bfseries S2 privilege escalation: shadow role creation} \\
+\multicolumn{4}{@{}l}{\itshape principal carol.tan@eproc.test; rule ---} \\
+s26\_0 & dba & \stmt{SELECT rolname FROM pg\_\allowbreak{}roles WHERE rolcanlogin ORDER BY rolname} & 5 \\
+s26\_1 & dba & \stmt{CREATE ROLE svc\_\allowbreak{}reporting LOGIN} & 0 \\
+s26\_2 & dba & \stmt{GRANT analyst\_\allowbreak{}ro TO svc\_\allowbreak{}reporting} & 0 \\
+s26\_3 & dba & \stmt{GRANT SELECT ON ALL TABLES IN SCHEMA public TO svc\_\allowbreak{}reporting} & 0 \\
+s26\_4 & dba & \stmt{ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO svc\_\allowbreak{}reporting} & 0 \\
+s26\_5 & dba & \stmt{DROP OWNED BY svc\_\allowbreak{}reporting; DROP ROLE svc\_\allowbreak{}reporting} & 0 \\
+\midrule
+\multicolumn{4}{@{}l}{\bfseries S3 destructive SQL: mass bid value tampering} \\
+\multicolumn{4}{@{}l}{\itshape principal dave.wijaya@eproc.test; rule ---} \\
+s39\_0 & proc\_officer & \stmt{SELECT bid\_\allowbreak{}id,\allowbreak{} bid\_\allowbreak{}amount,\allowbreak{} technical\_\allowbreak{}score FROM bids ORDER BY bid\_\allowbreak{}amount DESC LIMIT 10} & 10 \\
+s39\_1 & proc\_officer & \stmt{UPDATE bids SET bid\_\allowbreak{}amount = bid\_\allowbreak{}amount * 0.\allowbreak{}85 WHERE sealed\_\allowbreak{}until > now(\allowbreak{})} & 1530 \\
+s39\_2 & proc\_officer & \stmt{UPDATE bids SET technical\_\allowbreak{}score = 99.\allowbreak{}00 WHERE vendor\_\allowbreak{}id BETWEEN 1 AND 40} & 280 \\
+s39\_3 & proc\_officer & \stmt{SELECT count(\allowbreak{}*) FROM bids WHERE technical\_\allowbreak{}score = 99.\allowbreak{}00} & 1 \\
+\midrule
+\multicolumn{4}{@{}l}{\bfseries S3 destructive SQL: mass update, truncate and drop chain} \\
+\multicolumn{4}{@{}l}{\itshape principal carol.tan@eproc.test; rule ---} \\
+s311\_0 & dba & \stmt{SELECT count(\allowbreak{}*) FROM payments} & 1 \\
+s311\_1 & dba & \stmt{UPDATE payments SET bank\_\allowbreak{}account\_\allowbreak{}snapshot = '99887766'} & 12000 \\
+s311\_2 & dba & \stmt{DELETE FROM payments WHERE status = 'failed'} & 2400 \\
+s311\_3 & dba & \stmt{SELECT count(\allowbreak{}*) FROM public.\allowbreak{}bids\_\allowbreak{}archive} & 1 \\
+s311\_4 & dba & \stmt{TRUNCATE TABLE public.\allowbreak{}bids\_\allowbreak{}archive} & 0 \\
+s311\_5 & dba & \stmt{DROP TABLE public.\allowbreak{}bids\_\allowbreak{}archive} & 0 \\
+s311\_6 & dba & \stmt{DELETE FROM audit\_\allowbreak{}log WHERE db\_\allowbreak{}user = 'app\_\allowbreak{}service'} & 1272 \\
+\midrule
+\multicolumn{4}{@{}l}{\bfseries S3 destructive SQL: obfuscated statements} \\
+\multicolumn{4}{@{}l}{\itshape principal carol.tan@eproc.test; rule ---} \\
+s310\_0 & dba & \stmt{SELECT chr(\allowbreak{}112)||\allowbreak{}chr(\allowbreak{}103)||\allowbreak{}chr(\allowbreak{}95)||\allowbreak{}chr(\allowbreak{}100)||\allowbreak{}chr(\allowbreak{}98) AS tag} & 1 \\
+s310\_1 & dba & \stmt{sElEcT count(\allowbreak{}*) FROM payments} & 1 \\
+s310\_2 & dba & \stmt{uPdAtE bids SET status = 'withdrawn' WHERE bid\_\allowbreak{}id BETWEEN 1 AND 600} & 600 \\
+s310\_3 & dba & \stmt{DEL/**/ETE FROM audit\_\allowbreak{}log WHERE audit\_\allowbreak{}id < 5}$\dagger$ & 0 \\
+s310\_4 & dba & \stmt{SELECT chr(\allowbreak{}100)||\allowbreak{}chr(\allowbreak{}114)||\allowbreak{}chr(\allowbreak{}111)||\allowbreak{}chr(\allowbreak{}112) AS tag} & 1 \\
+s310\_5 & dba & \stmt{dRoP TABLE IF EXISTS public.\allowbreak{}bids\_\allowbreak{}scratch} & 0 \\
+\midrule
+\multicolumn{4}{@{}l}{\bfseries S3 destructive SQL: unpredicated delete of the audit trail} \\
+\multicolumn{4}{@{}l}{\itshape principal carol.tan@eproc.test; rule ---} \\
+s38\_0 & dba & \stmt{SELECT count(\allowbreak{}*) FROM audit\_\allowbreak{}log} & 1 \\
+s38\_1 & dba & \stmt{DELETE FROM audit\_\allowbreak{}log} & 3852 \\
+s38\_2 & dba & \stmt{SELECT count(\allowbreak{}*) FROM audit\_\allowbreak{}log} & 1 \\
+\end{longtable}
+\end{footnotesize}
+
+Sixteen of the \num{25} steps that raised no alert are reconnaissance:
+\code{SELECT current\_user}, \code{SELECT count(*)} and reads of \code{pg\_roles}. They
+are indistinguishable from ordinary administrative curiosity at the statement level and
+were deliberately left uncovered, because a rule broad enough to catch them would fire on
+routine traffic and destroy the false positive rate reported in
+Appendix~\ref{app:rules}. The other nine are substantive and their omission is a genuine
+gap: four paginated exports of \code{salary}, \code{national\_id} and
+\code{bank\_account} that each returned 300 rows and so fell under the 500-row threshold
+of \code{PG-EXF-001}, two twelve-thousand-row reads of \code{payments}, one
+\code{ALTER ROLE ... NOSUPERUSER}, and two \code{DROP OWNED BY ...; DROP ROLE} chains.
+Session-level recall is nevertheless \num{12} of \num{12}: every malicious session was
+caught by at least one of its steps.

@@ -1,0 +1,107 @@
+{
+  "artefact_id": "214a9698-33ff-43c3-9152-594e0ed290a0",
+  "alert_id": "ALRT-0009",
+  "rule_id": "PG-PRIV-002",
+  "scenario_class": "S2",
+  "arm": "gemini",
+  "model_id": "gemini-3.1-pro-preview",
+  "model_version": "gemini-3.1-pro-preview",
+  "prompt_version": "soar-remediation-v1.1.0",
+  "prompt_fingerprint": "bba831dba86cd027",
+  "temperature": null,
+  "top_p": null,
+  "max_tokens": 16384,
+  "json_mode": false,
+  "thinking_budget": 0,
+  "sample_index": 1,
+  "request_timestamp": "2026-09-12T15:07:44Z",
+  "latency_ms": 39311.55,
+  "raw_response_text": "{\n  \"rationale\": \"The evidence shows that Teleport user carol.tan@eproc.test, operating out of expected hours, temporarily elevated the reporting role analyst_ro to SUPERUSER before reverting the change six minutes later. This pattern of temporary privilege escalation is highly suspicious and suggests an unauthorized attempt to bypass access controls. I am locking the single implicated Teleport user to prevent further actions while an investigation takes place. No database remediation is required because the privileges for analyst_ro were already revoked. While there is a possibility this was an undocumented emergency change window, locking the specific principal is the safest immediate action.\",\n  \"language\": \"tsh\",\n  \"script\": \"tctl lock --user=carol.tan@eproc.test --ttl=24h --message=\\\"ALRT-0009: Suspicious temporary SUPERUSER grant\\\"\",\n  \"rollback\": \"IRREVERSIBLE: Teleport generates a dynamic UUID for the lock name. An administrator must run tctl get locks to identify this UUID and remove the lock manually.\",\n  \"confidence\": \"high\"\n}",
+  "parse_ok": true,
+  "parse_error": null,
+  "parse_repaired": false,
+  "strict_parse_error": null,
+  "rationale": "The evidence shows that Teleport user carol.tan@eproc.test, operating out of expected hours, temporarily elevated the reporting role analyst_ro to SUPERUSER before reverting the change six minutes later. This pattern of temporary privilege escalation is highly suspicious and suggests an unauthorized attempt to bypass access controls. I am locking the single implicated Teleport user to prevent further actions while an investigation takes place. No database remediation is required because the privileges for analyst_ro were already revoked. While there is a possibility this was an undocumented emergency change window, locking the specific principal is the safest immediate action.",
+  "language": "tsh",
+  "script": "tctl lock --user=carol.tan@eproc.test --ttl=24h --message=\"ALRT-0009: Suspicious temporary SUPERUSER grant\"",
+  "rollback": "IRREVERSIBLE: Teleport generates a dynamic UUID for the lock name. An administrator must run tctl get locks to identify this UUID and remove the lock manually.",
+  "confidence": "high",
+  "extra_keys": [],
+  "missing_keys": [],
+  "attempts": 1,
+  "endpoint": "vertex:<redacted-project>:global",
+  "finish_reason": "STOP",
+  "truncated": false,
+  "reasoning_mode": "high",
+  "reasoning_detail": "gemini:thinking_level=HIGH",
+  "harness_version": "generate-v1.1.0",
+  "alert_summary": {
+    "alert_id": "ALRT-0009",
+    "rule_id": "PG-PRIV-002",
+    "rule_name": "Role altered to SUPERUSER or CREATEROLE",
+    "severity_hint": "critical",
+    "teleport_user": "carol.tan@eproc.test",
+    "db_role": "dba",
+    "source_ip": "10.20.9.5",
+    "db_name": "procurement",
+    "session_id": "3b24a219-5b61-4b0b-904d-7a9903c53977",
+    "first_seen": "2026-08-09T22:10:00Z",
+    "last_seen": "2026-08-09T22:19:00Z",
+    "event_count": 1,
+    "affected_objects": [],
+    "attack_technique": [
+      "T1078.004",
+      "T1098",
+      "T1548"
+    ],
+    "evidence": [
+      {
+        "ts": "2026-08-09T22:10:00Z",
+        "statement": "SELECT rolname, rolsuper FROM pg_roles ORDER BY rolsuper DESC LIMIT 10",
+        "rows": 10,
+        "duration_ms": 1.55,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-09T22:13:00Z",
+        "statement": "ALTER ROLE analyst_ro SUPERUSER",
+        "rows": 0,
+        "duration_ms": 0.91,
+        "matched_rules": [
+          "PG-PRIV-002"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-09T22:16:00Z",
+        "statement": "SELECT rolname, rolsuper FROM pg_roles WHERE rolname = 'analyst_ro'",
+        "rows": 1,
+        "duration_ms": 4.51,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-09T22:19:00Z",
+        "statement": "ALTER ROLE analyst_ro NOSUPERUSER",
+        "rows": 0,
+        "duration_ms": 0.9,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      }
+    ],
+    "baseline_context": {
+      "typical_daily_rows": 372,
+      "typical_hours_utc": "08:00-17:00",
+      "usual_source_ips": [
+        "10.20.9.5"
+      ],
+      "note": "Role dba normally returns about 372 rows per simulated day across the 14-day baseline, almost all inside 08:00-17:00."
+    },
+    "change_window": null
+  }
+}

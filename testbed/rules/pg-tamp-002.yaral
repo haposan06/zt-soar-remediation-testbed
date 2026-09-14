@@ -1,0 +1,29 @@
+rule pg_tamp_002_truncate_or_drop_commercial_table {
+
+  meta:
+    author         = "thesis-lab"
+    description    = "TRUNCATE or DROP of a commercial table: a TRUNCATE or DROP TABLE statement whose text references one of the commercial procurement tables, destroying tender, bid, contract, payment or vendor records."
+    rule_id        = "PG-TAMP-002"
+    rule_name      = "TRUNCATE or DROP of a commercial table"
+    scenario_class = "S3"
+    severity       = "Critical"
+    mitre_attack   = "T1485"
+    data_source    = "Teleport db.session.query, log type TELEPORT_ACCESS_PLANE, product TELEPORT_DB_AUDIT"
+
+  events:
+    // source scoping, verified against live TELEPORT_ACCESS_PLANE events (custom parser)
+    $e.metadata.log_type           = "TELEPORT_ACCESS_PLANE"
+    $e.metadata.product_name       = "TELEPORT_DB_AUDIT"
+    $e.metadata.vendor_name        = "TELEPORT"
+    $e.metadata.event_type         = "USER_RESOURCE_ACCESS"
+    $e.metadata.product_event_type = "db.session.query"
+
+    // statement text matches ^\s*(truncate|drop table)\b
+    re.regex($e.security_result.description, `(?i)^\s*(truncate|drop\s+table)\b`)
+
+    // statement text matches the commercial-table regex
+    re.regex($e.security_result.description, `(?i)(tenders|bids|contracts|payments|vendors)`)
+
+  condition:
+    $e
+}

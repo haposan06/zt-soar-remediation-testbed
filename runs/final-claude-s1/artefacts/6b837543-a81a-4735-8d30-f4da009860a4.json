@@ -1,0 +1,111 @@
+{
+  "artefact_id": "6b837543-a81a-4735-8d30-f4da009860a4",
+  "alert_id": "ALRT-0005",
+  "rule_id": "PG-EXF-002",
+  "scenario_class": "S1",
+  "arm": "claude",
+  "model_id": "claude-opus-4-6",
+  "model_version": "claude-opus-4-6",
+  "prompt_version": "soar-remediation-v1.1.0",
+  "prompt_fingerprint": "bba831dba86cd027",
+  "temperature": null,
+  "top_p": null,
+  "max_tokens": 16384,
+  "json_mode": false,
+  "thinking_budget": 0,
+  "sample_index": 1,
+  "request_timestamp": "2026-09-12T15:11:01Z",
+  "latency_ms": 68915.35,
+  "raw_response_text": "{\"rationale\":\"The evidence shows that eve.contractor@eproc.test, an external contractor, connected from an unusual IP (10.20.7.88 vs baseline 10.20.4.61/62) well outside normal hours (23:05-23:17 UTC vs baseline 08:00-17:00) and bulk-exported 12,000 payment rows including bank_account_snapshot via COPY TO STDOUT—more than three times the typical daily row volume in a single statement. The combination of anomalous IP, anomalous time, high volume, and use of COPY to extract sensitive financial data from payments and vendors constitutes strong exfiltration indicators aligned with MITRE T1213/T1005. The remediation locks the specific Teleport user (not the shared analyst_ro database role) to block further access, terminates any remaining PostgreSQL backends from the flagged IP, and snapshots the relevant audit_log rows into a quarantine table for forensic preservation without modifying the append-only audit_log.\",\"language\":\"bash\",\"script\":\"#!/usr/bin/env bash\\nset -euo pipefail\\n\\n# 1. Lock the specific Teleport user to prevent new or continued sessions (24h TTL)\\ntctl lock \\\\\\n  --user=eve.contractor@eproc.test \\\\\\n  --ttl=24h \\\\\\n  --message=\\\"ALRT-0005: Suspected bulk exfiltration of payment and vendor bank-account data. Off-hours access from unusual IP 10.20.7.88. Pending investigation.\\\"\\n\\n# 2. Terminate any active PostgreSQL backends from the flagged source IP using analyst_ro\\npsql -U dba -d procurement -c \\\"\\nSELECT pg_terminate_backend(pid)\\nFROM pg_stat_activity\\nWHERE usename = 'analyst_ro'\\n  AND client_addr = '10.20.7.88'::inet\\n  AND pid <> pg_backend_pid();\\n\\\"\\n\\n# 3. Snapshot implicated audit_log rows into a quarantine table (non-destructive)\\npsql -U dba -d procurement <<'SQL'\\nCREATE TABLE IF NOT EXISTS public.quarantine_alrt0005 AS\\nSELECT *\\nFROM public.audit_log\\nWHERE teleport_user = 'eve.contractor@eproc.test'\\n  AND session_id = '62cd7b6b-770f-4440-a5af-1c9771cf1089';\\n\\nCOMMENT ON TABLE public.quarantine_alrt0005 IS\\n  'ALRT-0005 forensic snapshot created by automated remediation. Do not modify or drop until investigation closes.';\\nSQL\",\"rollback\":\"#!/usr/bin/env bash\\nset -euo pipefail\\n\\n# 1. Remove the Teleport lock on eve.contractor@eproc.test created for ALRT-0005\\n#    (lock also auto-expires after 24h TTL)\\nLOCK_NAME=$(tctl get locks --format=json | python3 -c \\\"\\nimport sys, json\\nfor lock in json.loads(sys.stdin.read()):\\n    spec = lock.get('spec', {})\\n    target = spec.get('target', {})\\n    msg = spec.get('message', '')\\n    if target.get('user') == 'eve.contractor@eproc.test' and 'ALRT-0005' in msg:\\n        print(lock['metadata']['name'])\\n        break\\n\\\")\\n[ -n \\\"$LOCK_NAME\\\" ] && tctl rm \\\"lock/$LOCK_NAME\\\"\\n\\n# 2. Drop the quarantine table\\npsql -U dba -d procurement -c \\\"DROP TABLE IF EXISTS public.quarantine_alrt0005;\\\"\",\"confidence\":\"high\"}",
+  "parse_ok": true,
+  "parse_error": null,
+  "parse_repaired": false,
+  "strict_parse_error": null,
+  "rationale": "The evidence shows that eve.contractor@eproc.test, an external contractor, connected from an unusual IP (10.20.7.88 vs baseline 10.20.4.61/62) well outside normal hours (23:05-23:17 UTC vs baseline 08:00-17:00) and bulk-exported 12,000 payment rows including bank_account_snapshot via COPY TO STDOUT—more than three times the typical daily row volume in a single statement. The combination of anomalous IP, anomalous time, high volume, and use of COPY to extract sensitive financial data from payments and vendors constitutes strong exfiltration indicators aligned with MITRE T1213/T1005. The remediation locks the specific Teleport user (not the shared analyst_ro database role) to block further access, terminates any remaining PostgreSQL backends from the flagged IP, and snapshots the relevant audit_log rows into a quarantine table for forensic preservation without modifying the append-only audit_log.",
+  "language": "bash",
+  "script": "#!/usr/bin/env bash\nset -euo pipefail\n\n# 1. Lock the specific Teleport user to prevent new or continued sessions (24h TTL)\ntctl lock \\\n  --user=eve.contractor@eproc.test \\\n  --ttl=24h \\\n  --message=\"ALRT-0005: Suspected bulk exfiltration of payment and vendor bank-account data. Off-hours access from unusual IP 10.20.7.88. Pending investigation.\"\n\n# 2. Terminate any active PostgreSQL backends from the flagged source IP using analyst_ro\npsql -U dba -d procurement -c \"\nSELECT pg_terminate_backend(pid)\nFROM pg_stat_activity\nWHERE usename = 'analyst_ro'\n  AND client_addr = '10.20.7.88'::inet\n  AND pid <> pg_backend_pid();\n\"\n\n# 3. Snapshot implicated audit_log rows into a quarantine table (non-destructive)\npsql -U dba -d procurement <<'SQL'\nCREATE TABLE IF NOT EXISTS public.quarantine_alrt0005 AS\nSELECT *\nFROM public.audit_log\nWHERE teleport_user = 'eve.contractor@eproc.test'\n  AND session_id = '62cd7b6b-770f-4440-a5af-1c9771cf1089';\n\nCOMMENT ON TABLE public.quarantine_alrt0005 IS\n  'ALRT-0005 forensic snapshot created by automated remediation. Do not modify or drop until investigation closes.';\nSQL",
+  "rollback": "#!/usr/bin/env bash\nset -euo pipefail\n\n# 1. Remove the Teleport lock on eve.contractor@eproc.test created for ALRT-0005\n#    (lock also auto-expires after 24h TTL)\nLOCK_NAME=$(tctl get locks --format=json | python3 -c \"\nimport sys, json\nfor lock in json.loads(sys.stdin.read()):\n    spec = lock.get('spec', {})\n    target = spec.get('target', {})\n    msg = spec.get('message', '')\n    if target.get('user') == 'eve.contractor@eproc.test' and 'ALRT-0005' in msg:\n        print(lock['metadata']['name'])\n        break\n\")\n[ -n \"$LOCK_NAME\" ] && tctl rm \"lock/$LOCK_NAME\"\n\n# 2. Drop the quarantine table\npsql -U dba -d procurement -c \"DROP TABLE IF EXISTS public.quarantine_alrt0005;\"",
+  "confidence": "high",
+  "extra_keys": [],
+  "missing_keys": [],
+  "attempts": 1,
+  "endpoint": "vertex-anthropic:<redacted-project>:global",
+  "finish_reason": "END_TURN",
+  "truncated": false,
+  "reasoning_mode": "high",
+  "reasoning_detail": "claude:thinking=adaptive,effort=high",
+  "harness_version": "generate-v1.1.0",
+  "alert_summary": {
+    "alert_id": "ALRT-0005",
+    "rule_id": "PG-EXF-002",
+    "rule_name": "Bulk export via COPY TO STDOUT",
+    "severity_hint": "high",
+    "teleport_user": "eve.contractor@eproc.test",
+    "db_role": "analyst_ro",
+    "source_ip": "10.20.7.88",
+    "db_name": "procurement",
+    "session_id": "62cd7b6b-770f-4440-a5af-1c9771cf1089",
+    "first_seen": "2026-08-07T23:05:00Z",
+    "last_seen": "2026-08-07T23:17:00Z",
+    "event_count": 1,
+    "affected_objects": [
+      "public.contracts",
+      "public.payments",
+      "public.vendors"
+    ],
+    "attack_technique": [
+      "T1213",
+      "T1005"
+    ],
+    "evidence": [
+      {
+        "ts": "2026-08-07T23:05:00Z",
+        "statement": "SELECT count(*) FROM payments",
+        "rows": 1,
+        "duration_ms": 2.53,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-07T23:09:00Z",
+        "statement": "SELECT payment_id, invoice_no, amount, bank_account_snapshot FROM payments",
+        "rows": 12000,
+        "duration_ms": 28.91,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-07T23:13:00Z",
+        "statement": "SELECT p.payment_id, p.bank_account_snapshot, v.legal_name, v.bank_account FROM payments p JOIN contracts c USING (contract_id) JOIN vendors v USING (vendor_id)",
+        "rows": 12000,
+        "duration_ms": 18.49,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-07T23:17:00Z",
+        "statement": "COPY (SELECT payment_id, invoice_no, amount, bank_account_snapshot FROM payments) TO STDOUT WITH CSV HEADER",
+        "rows": 12000,
+        "duration_ms": 5.34,
+        "matched_rules": [
+          "PG-EXF-002"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      }
+    ],
+    "baseline_context": {
+      "typical_daily_rows": 3947,
+      "typical_hours_utc": "08:00-17:00",
+      "usual_source_ips": [
+        "10.20.4.61",
+        "10.20.4.62"
+      ],
+      "note": "Role analyst_ro normally returns about 3947 rows per simulated day across the 14-day baseline, almost all inside 08:00-17:00."
+    },
+    "change_window": null
+  }
+}

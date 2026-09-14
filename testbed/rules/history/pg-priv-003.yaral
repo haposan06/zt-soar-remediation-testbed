@@ -1,0 +1,24 @@
+rule pg_priv_003_shadow_role_or_default_privileges {
+
+  meta:
+    author         = "thesis-lab"
+    description    = "Shadow role creation or default privilege alteration: a CREATE ROLE or ALTER DEFAULT PRIVILEGES statement, either of which can establish persistent unauthorised access to procurement data."
+    rule_id        = "PG-PRIV-003"
+    rule_name      = "Shadow role creation or default privilege alteration"
+    scenario_class = "S2"
+    severity       = "High"
+    mitre_attack   = "T1136.001, T1098"
+    data_source    = "Teleport db.session.query (TELEPORT_DB_AUDIT)"
+
+  events:
+    $e.metadata.event_type   = "GENERIC_EVENT"
+    $e.metadata.product_name = "Teleport"
+    $e.metadata.vendor_name  = "Gravitational"
+    $e.metadata.log_type     = "TELEPORT_DB_AUDIT"
+
+    // db_query matches ^\s*(create role|alter default privileges)\b
+    re.regex($e.target.resource.attribute.labels["db_query"], `(?i)^\s*(create\s+role|alter\s+default\s+privileges)\b`)
+
+  condition:
+    $e
+}

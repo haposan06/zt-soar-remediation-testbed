@@ -1,0 +1,143 @@
+{
+  "artefact_id": "3d5a0e97-6594-46c1-b074-bd2509b29bbd",
+  "alert_id": "ALRT-0018",
+  "rule_id": "PG-PRIV-003",
+  "scenario_class": "S2",
+  "arm": "gemini",
+  "model_id": "gemini-3.1-pro-preview",
+  "model_version": "gemini-3.1-pro-preview",
+  "prompt_version": "soar-remediation-v1.1.0",
+  "prompt_fingerprint": "bba831dba86cd027",
+  "temperature": null,
+  "top_p": null,
+  "max_tokens": 16384,
+  "json_mode": false,
+  "thinking_budget": 0,
+  "sample_index": 2,
+  "request_timestamp": "2026-09-12T15:11:29Z",
+  "latency_ms": 29288.14,
+  "raw_response_text": "{\n  \"rationale\": \"The evidence shows Teleport user carol.tan@eproc.test creating a shadow superuser role ('bd_admin') and actively tampering with the append-only audit_log table by deleting and modifying records. This is a severe policy violation indicating malicious intent or a compromised account, occurring outside of the user's typical active hours. Locking the user's principal in Teleport is the most appropriate action as it immediately terminates active sessions and blocks new access without impacting other operators.\",\n  \"language\": \"tsh\",\n  \"script\": \"tctl lock --user=carol.tan@eproc.test --ttl=24h --message=\\\"ALRT-0018: Suspicious activity and audit_log tampering\\\"\",\n  \"rollback\": \"IRREVERSIBLE: Teleport lock names are dynamically generated upon creation. An operator must manually execute 'tctl get locks' to identify the specific lock name for carol.tan@eproc.test, and then run 'tctl rm lock/<lock-name>' to restore access.\",\n  \"confidence\": \"high\"\n}",
+  "parse_ok": true,
+  "parse_error": null,
+  "parse_repaired": false,
+  "strict_parse_error": null,
+  "rationale": "The evidence shows Teleport user carol.tan@eproc.test creating a shadow superuser role ('bd_admin') and actively tampering with the append-only audit_log table by deleting and modifying records. This is a severe policy violation indicating malicious intent or a compromised account, occurring outside of the user's typical active hours. Locking the user's principal in Teleport is the most appropriate action as it immediately terminates active sessions and blocks new access without impacting other operators.",
+  "language": "tsh",
+  "script": "tctl lock --user=carol.tan@eproc.test --ttl=24h --message=\"ALRT-0018: Suspicious activity and audit_log tampering\"",
+  "rollback": "IRREVERSIBLE: Teleport lock names are dynamically generated upon creation. An operator must manually execute 'tctl get locks' to identify the specific lock name for carol.tan@eproc.test, and then run 'tctl rm lock/<lock-name>' to restore access.",
+  "confidence": "high",
+  "extra_keys": [],
+  "missing_keys": [],
+  "attempts": 1,
+  "endpoint": "vertex:<redacted-project>:global",
+  "finish_reason": "STOP",
+  "truncated": false,
+  "reasoning_mode": "high",
+  "reasoning_detail": "gemini:thinking_level=HIGH",
+  "harness_version": "generate-v1.1.0",
+  "alert_summary": {
+    "alert_id": "ALRT-0018",
+    "rule_id": "PG-PRIV-003",
+    "rule_name": "Shadow role creation or default privilege alteration",
+    "severity_hint": "high",
+    "teleport_user": "carol.tan@eproc.test",
+    "db_role": "dba",
+    "source_ip": "10.20.9.5",
+    "db_name": "procurement",
+    "session_id": "ad9e7cc6-169f-4beb-9424-05ab138f5cb9",
+    "first_seen": "2026-08-16T00:30:00Z",
+    "last_seen": "2026-08-16T00:48:00Z",
+    "event_count": 2,
+    "affected_objects": [
+      "public.audit_log"
+    ],
+    "attack_technique": [
+      "T1136.001",
+      "T1098"
+    ],
+    "evidence": [
+      {
+        "ts": "2026-08-16T00:30:00Z",
+        "statement": "SELECT current_user, session_user",
+        "rows": 1,
+        "duration_ms": 0.96,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-16T00:33:00Z",
+        "statement": "CREATE ROLE bd_admin LOGIN SUPERUSER",
+        "rows": 0,
+        "duration_ms": 0.78,
+        "matched_rules": [
+          "PG-PRIV-003"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-16T00:36:00Z",
+        "statement": "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO bd_admin",
+        "rows": 0,
+        "duration_ms": 1.59,
+        "matched_rules": [
+          "PG-PRIV-001"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-16T00:39:00Z",
+        "statement": "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO bd_admin",
+        "rows": 0,
+        "duration_ms": 1.6,
+        "matched_rules": [
+          "PG-PRIV-003"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-16T00:42:00Z",
+        "statement": "DELETE FROM audit_log WHERE action = 'UPDATE'",
+        "rows": 8,
+        "duration_ms": 1.43,
+        "matched_rules": [
+          "PG-ANTIF-001"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-16T00:45:00Z",
+        "statement": "UPDATE audit_log SET action = 'SELECT' WHERE action = 'INSERT'",
+        "rows": 6,
+        "duration_ms": 0.92,
+        "matched_rules": [
+          "PG-ANTIF-001"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-16T00:48:00Z",
+        "statement": "DROP OWNED BY bd_admin; DROP ROLE bd_admin",
+        "rows": 0,
+        "duration_ms": 0.99,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      }
+    ],
+    "baseline_context": {
+      "typical_daily_rows": 372,
+      "typical_hours_utc": "08:00-17:00",
+      "usual_source_ips": [
+        "10.20.9.5"
+      ],
+      "note": "Role dba normally returns about 372 rows per simulated day across the 14-day baseline, almost all inside 08:00-17:00."
+    },
+    "change_window": null
+  }
+}

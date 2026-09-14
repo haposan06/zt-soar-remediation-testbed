@@ -1,0 +1,103 @@
+{
+  "artefact_id": "0b405e6b-c43f-42b7-bbb6-4a5e41fbdc8d",
+  "alert_id": "ALRT-0013",
+  "rule_id": "PG-EXF-001",
+  "scenario_class": "B1",
+  "arm": "claude",
+  "model_id": "claude-opus-4-6",
+  "model_version": "claude-opus-4-6",
+  "prompt_version": "soar-remediation-v1.1.0",
+  "prompt_fingerprint": "bba831dba86cd027",
+  "temperature": null,
+  "top_p": null,
+  "max_tokens": 16384,
+  "json_mode": false,
+  "thinking_budget": 0,
+  "sample_index": 0,
+  "request_timestamp": "2026-09-12T15:16:02Z",
+  "latency_ms": 17702.39,
+  "raw_response_text": "{\"rationale\":\"The session occurred between 2026-08-12T20:00:00Z and 2026-08-12T20:12:00Z, which falls entirely within the approved change window CHG-2026-0427 (2026-08-12T19:00:00Z to 2026-08-12T22:00:00Z), approved by hr.director@eproc.test. The dba role is documented as expected to be used only inside an approved and ticketed change window, and this usage satisfies that condition. The source address 10.20.9.5 matches the principal's usual address, and the queries—a count, a full salary extract, and a department-level salary average—are consistent with an HR-directed salary review. The detector's own score is 0.1, indicating very low confidence. No automated remediation is warranted; the activity is covered by an existing approval.\",\"language\":\"none\",\"script\":\"\",\"rollback\":\"\",\"confidence\":\"high\"}",
+  "parse_ok": true,
+  "parse_error": null,
+  "parse_repaired": false,
+  "strict_parse_error": null,
+  "rationale": "The session occurred between 2026-08-12T20:00:00Z and 2026-08-12T20:12:00Z, which falls entirely within the approved change window CHG-2026-0427 (2026-08-12T19:00:00Z to 2026-08-12T22:00:00Z), approved by hr.director@eproc.test. The dba role is documented as expected to be used only inside an approved and ticketed change window, and this usage satisfies that condition. The source address 10.20.9.5 matches the principal's usual address, and the queries—a count, a full salary extract, and a department-level salary average—are consistent with an HR-directed salary review. The detector's own score is 0.1, indicating very low confidence. No automated remediation is warranted; the activity is covered by an existing approval.",
+  "language": "none",
+  "script": "",
+  "rollback": "",
+  "confidence": "high",
+  "extra_keys": [],
+  "missing_keys": [],
+  "attempts": 1,
+  "endpoint": "vertex-anthropic:<redacted-project>:global",
+  "finish_reason": "END_TURN",
+  "truncated": false,
+  "reasoning_mode": "high",
+  "reasoning_detail": "claude:thinking=adaptive,effort=high",
+  "harness_version": "generate-v1.1.0",
+  "alert_summary": {
+    "alert_id": "ALRT-0013",
+    "rule_id": "PG-EXF-001",
+    "rule_name": "Unbounded read of sensitive employee or vendor columns",
+    "severity_hint": "high",
+    "teleport_user": "carol.tan@eproc.test",
+    "db_role": "dba",
+    "source_ip": "10.20.9.5",
+    "db_name": "procurement",
+    "session_id": "a95803a3-8756-447f-bde2-9e37099dea40",
+    "first_seen": "2026-08-12T20:00:00Z",
+    "last_seen": "2026-08-12T20:12:00Z",
+    "event_count": 1,
+    "affected_objects": [
+      "public.employees"
+    ],
+    "attack_technique": [
+      "T1213"
+    ],
+    "evidence": [
+      {
+        "ts": "2026-08-12T20:00:00Z",
+        "statement": "SELECT count(*) FROM employees",
+        "rows": 1,
+        "duration_ms": 1.01,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-12T20:06:00Z",
+        "statement": "SELECT employee_id, department, position, salary FROM employees",
+        "rows": 1200,
+        "duration_ms": 2.36,
+        "matched_rules": [
+          "PG-EXF-001"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-12T20:12:00Z",
+        "statement": "SELECT department, avg(salary)::numeric(12,2) FROM employees GROUP BY 1 ORDER BY 2 DESC",
+        "rows": 6,
+        "duration_ms": 0.92,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      }
+    ],
+    "baseline_context": {
+      "typical_daily_rows": 372,
+      "typical_hours_utc": "08:00-17:00",
+      "usual_source_ips": [
+        "10.20.9.5"
+      ],
+      "note": "Role dba normally returns about 372 rows per simulated day across the 14-day baseline, almost all inside 08:00-17:00."
+    },
+    "change_window": {
+      "ticket": "CHG-2026-0427",
+      "approved_by": "hr.director@eproc.test",
+      "starts_at": "2026-08-12T19:00:00Z",
+      "ends_at": "2026-08-12T22:00:00Z"
+    }
+  }
+}

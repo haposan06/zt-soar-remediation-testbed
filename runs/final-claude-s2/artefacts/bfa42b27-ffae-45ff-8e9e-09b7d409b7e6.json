@@ -1,0 +1,115 @@
+{
+  "artefact_id": "bfa42b27-ffae-45ff-8e9e-09b7d409b7e6",
+  "alert_id": "ALRT-0007",
+  "rule_id": "PG-PRIV-003",
+  "scenario_class": "B1",
+  "arm": "claude",
+  "model_id": "claude-opus-4-6",
+  "model_version": "claude-opus-4-6",
+  "prompt_version": "soar-remediation-v1.1.0",
+  "prompt_fingerprint": "bba831dba86cd027",
+  "temperature": null,
+  "top_p": null,
+  "max_tokens": 16384,
+  "json_mode": false,
+  "thinking_budget": 0,
+  "sample_index": 2,
+  "request_timestamp": "2026-09-12T15:04:28Z",
+  "latency_ms": 35482.35,
+  "raw_response_text": "{\"rationale\":\"All four statements (02:00–02:09 UTC) fall entirely within the approved change window CHG-2026-0422 (2026-08-08T00:00:00Z–03:00:00Z), and the dba role is explicitly expected to be used during approved, ticketed change windows. The source address 10.20.9.5 matches the principal's baseline. The temporary role starter_tmp was created, granted analyst_ro, given default privileges, and then fully cleaned up via DROP OWNED BY / DROP ROLE in the same session, leaving no residual principal or privilege escalation. The detector score is 0.0. This is benign administrative activity covered by an approved change ticket, so no automated remediation is warranted.\",\"language\":\"none\",\"script\":\"\",\"rollback\":\"\",\"confidence\":\"high\"}",
+  "parse_ok": true,
+  "parse_error": null,
+  "parse_repaired": false,
+  "strict_parse_error": null,
+  "rationale": "All four statements (02:00–02:09 UTC) fall entirely within the approved change window CHG-2026-0422 (2026-08-08T00:00:00Z–03:00:00Z), and the dba role is explicitly expected to be used during approved, ticketed change windows. The source address 10.20.9.5 matches the principal's baseline. The temporary role starter_tmp was created, granted analyst_ro, given default privileges, and then fully cleaned up via DROP OWNED BY / DROP ROLE in the same session, leaving no residual principal or privilege escalation. The detector score is 0.0. This is benign administrative activity covered by an approved change ticket, so no automated remediation is warranted.",
+  "language": "none",
+  "script": "",
+  "rollback": "",
+  "confidence": "high",
+  "extra_keys": [],
+  "missing_keys": [],
+  "attempts": 1,
+  "endpoint": "vertex-anthropic:<redacted-project>:global",
+  "finish_reason": "END_TURN",
+  "truncated": false,
+  "reasoning_mode": "high",
+  "reasoning_detail": "claude:thinking=adaptive,effort=high",
+  "harness_version": "generate-v1.1.0",
+  "alert_summary": {
+    "alert_id": "ALRT-0007",
+    "rule_id": "PG-PRIV-003",
+    "rule_name": "Shadow role creation or default privilege alteration",
+    "severity_hint": "high",
+    "teleport_user": "carol.tan@eproc.test",
+    "db_role": "dba",
+    "source_ip": "10.20.9.5",
+    "db_name": "procurement",
+    "session_id": "7ef4506a-25da-4d4f-87e4-73eb845bf689",
+    "first_seen": "2026-08-08T02:00:00Z",
+    "last_seen": "2026-08-08T02:09:00Z",
+    "event_count": 2,
+    "affected_objects": [],
+    "attack_technique": [
+      "T1136.001",
+      "T1098"
+    ],
+    "evidence": [
+      {
+        "ts": "2026-08-08T02:00:00Z",
+        "statement": "CREATE ROLE starter_tmp LOGIN",
+        "rows": 0,
+        "duration_ms": 5.23,
+        "matched_rules": [
+          "PG-PRIV-003"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-08T02:03:00Z",
+        "statement": "GRANT analyst_ro TO starter_tmp",
+        "rows": 0,
+        "duration_ms": 4.23,
+        "matched_rules": [
+          "PG-PRIV-001"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-08T02:06:00Z",
+        "statement": "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO starter_tmp",
+        "rows": 0,
+        "duration_ms": 1.09,
+        "matched_rules": [
+          "PG-PRIV-003"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-08T02:09:00Z",
+        "statement": "DROP OWNED BY starter_tmp; DROP ROLE starter_tmp",
+        "rows": 0,
+        "duration_ms": 1.96,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      }
+    ],
+    "baseline_context": {
+      "typical_daily_rows": 372,
+      "typical_hours_utc": "08:00-17:00",
+      "usual_source_ips": [
+        "10.20.9.5"
+      ],
+      "note": "Role dba normally returns about 372 rows per simulated day across the 14-day baseline, almost all inside 08:00-17:00."
+    },
+    "change_window": {
+      "ticket": "CHG-2026-0422",
+      "approved_by": "hr.systems@eproc.test",
+      "starts_at": "2026-08-08T00:00:00Z",
+      "ends_at": "2026-08-08T03:00:00Z"
+    }
+  }
+}

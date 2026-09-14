@@ -1,0 +1,35 @@
+rule pg_tamp_004_mass_update_sealed_bid_amounts {
+
+  meta:
+    author         = "thesis-lab"
+    description    = "Mass update of sealed bid amounts: an UPDATE against the bids table that sets bid_amount or technical_score and affects 50 or more rows, indicating wholesale manipulation of sealed tender evaluation data."
+    rule_id        = "PG-TAMP-004"
+    rule_name      = "Mass update of sealed bid amounts"
+    scenario_class = "S3"
+    severity       = "Critical"
+    mitre_attack   = "T1565.001"
+    data_source    = "Teleport db.session.query, log type TELEPORT_ACCESS_PLANE, product TELEPORT_DB_AUDIT"
+
+  events:
+    // source scoping, verified against live TELEPORT_ACCESS_PLANE events (custom parser)
+    $e.metadata.log_type           = "TELEPORT_ACCESS_PLANE"
+    $e.metadata.product_name       = "TELEPORT_DB_AUDIT"
+    $e.metadata.vendor_name        = "TELEPORT"
+    $e.metadata.event_type         = "USER_RESOURCE_ACCESS"
+    $e.metadata.product_event_type = "db.session.query"
+
+    // rows_affected is a database-side enrichment. Teleport telemetry carries no
+    // row count, so this predicate is not evaluable from the proxy stream alone.
+
+    // statement text matches ^\s*update (public.)?bids\b
+    re.regex($e.security_result.description, `(?i)^\s*update\s+(public\.)?bids\b`)
+
+    // SET clause touches bid_amount or technical_score
+    re.regex($e.security_result.description, `(?i)\bset\b.*\b(bid_amount|technical_score)\b`)
+
+    // 50 or more rows affected
+    strings.to_int($e.additional.fields["rows_affected"]) >= 50
+
+  condition:
+    $e
+}

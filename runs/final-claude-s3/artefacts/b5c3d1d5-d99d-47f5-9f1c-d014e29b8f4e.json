@@ -1,0 +1,126 @@
+{
+  "artefact_id": "b5c3d1d5-d99d-47f5-9f1c-d014e29b8f4e",
+  "alert_id": "ALRT-0011",
+  "rule_id": "PG-EXF-002",
+  "scenario_class": "S1",
+  "arm": "claude",
+  "model_id": "claude-opus-4-6",
+  "model_version": "claude-opus-4-6",
+  "prompt_version": "soar-remediation-v1.1.0",
+  "prompt_fingerprint": "bba831dba86cd027",
+  "temperature": null,
+  "top_p": null,
+  "max_tokens": 16384,
+  "json_mode": false,
+  "thinking_budget": 0,
+  "sample_index": 1,
+  "request_timestamp": "2026-09-12T15:05:34Z",
+  "latency_ms": 100028.52,
+  "raw_response_text": "{\"rationale\":\"The service account svc.app@eproc.test (db role app_service) systematically enumerated all rows of public.employees selecting sensitive columns (salary, national_id, bank_account) via paginated SELECTs, then executed a COPY TO STDOUT of those columns at 02:40–03:05 UTC—well outside the 08:00–17:00 baseline window. Although total row volume (~2400) is within the daily baseline and the detector score is low (0.1), the explicit COPY TO STDOUT of PII columns in a pattern consistent with staged exfiltration warrants restricting the exploited over-privilege. Locking the Teleport principal svc.app@eproc.test would disable the entire procurement web application, violating proportionality (Rule 2), so instead the remediation revokes table-level SELECT on public.employees from app_service and re-grants only non-sensitive columns; the masked view employees_public already exists for legitimate lookups. A forensic snapshot of the session's audit_log entries is preserved in a quarantine table.\",\"language\":\"sql\",\"script\":\"-- ALRT-0011: Remediation – session b86fb472-b58a-46fd-bfe3-a5beb5c50a59\\n\\n-- 1. Forensic snapshot of audit records for the implicated session\\nCREATE TABLE public.quarantine_alrt_0011 AS\\nSELECT *, now() AS quarantined_at\\nFROM public.audit_log\\nWHERE session_id = 'b86fb472-b58a-46fd-bfe3-a5beb5c50a59';\\n\\n-- 2. Restrict app_service to non-sensitive employee columns only.\\n--    The application should use employees_public for legitimate lookups.\\nREVOKE SELECT ON public.employees FROM app_service;\\nGRANT SELECT (employee_id, full_name, email, department, position, hire_date, manager_id)\\n  ON public.employees TO app_service;\\n\",\"rollback\":\"-- Rollback ALRT-0011\\nREVOKE SELECT ON public.employees FROM app_service;\\nGRANT SELECT ON public.employees TO app_service;\\nDROP TABLE IF EXISTS public.quarantine_alrt_0011;\\n\",\"confidence\":\"medium\"}",
+  "parse_ok": true,
+  "parse_error": null,
+  "parse_repaired": false,
+  "strict_parse_error": null,
+  "rationale": "The service account svc.app@eproc.test (db role app_service) systematically enumerated all rows of public.employees selecting sensitive columns (salary, national_id, bank_account) via paginated SELECTs, then executed a COPY TO STDOUT of those columns at 02:40–03:05 UTC—well outside the 08:00–17:00 baseline window. Although total row volume (~2400) is within the daily baseline and the detector score is low (0.1), the explicit COPY TO STDOUT of PII columns in a pattern consistent with staged exfiltration warrants restricting the exploited over-privilege. Locking the Teleport principal svc.app@eproc.test would disable the entire procurement web application, violating proportionality (Rule 2), so instead the remediation revokes table-level SELECT on public.employees from app_service and re-grants only non-sensitive columns; the masked view employees_public already exists for legitimate lookups. A forensic snapshot of the session's audit_log entries is preserved in a quarantine table.",
+  "language": "sql",
+  "script": "-- ALRT-0011: Remediation – session b86fb472-b58a-46fd-bfe3-a5beb5c50a59\n\n-- 1. Forensic snapshot of audit records for the implicated session\nCREATE TABLE public.quarantine_alrt_0011 AS\nSELECT *, now() AS quarantined_at\nFROM public.audit_log\nWHERE session_id = 'b86fb472-b58a-46fd-bfe3-a5beb5c50a59';\n\n-- 2. Restrict app_service to non-sensitive employee columns only.\n--    The application should use employees_public for legitimate lookups.\nREVOKE SELECT ON public.employees FROM app_service;\nGRANT SELECT (employee_id, full_name, email, department, position, hire_date, manager_id)\n  ON public.employees TO app_service;\n",
+  "rollback": "-- Rollback ALRT-0011\nREVOKE SELECT ON public.employees FROM app_service;\nGRANT SELECT ON public.employees TO app_service;\nDROP TABLE IF EXISTS public.quarantine_alrt_0011;\n",
+  "confidence": "medium",
+  "extra_keys": [],
+  "missing_keys": [],
+  "attempts": 1,
+  "endpoint": "vertex-anthropic:<redacted-project>:global",
+  "finish_reason": "END_TURN",
+  "truncated": false,
+  "reasoning_mode": "high",
+  "reasoning_detail": "claude:thinking=adaptive,effort=high",
+  "harness_version": "generate-v1.1.0",
+  "alert_summary": {
+    "alert_id": "ALRT-0011",
+    "rule_id": "PG-EXF-002",
+    "rule_name": "Bulk export via COPY TO STDOUT",
+    "severity_hint": "high",
+    "teleport_user": "svc.app@eproc.test",
+    "db_role": "app_service",
+    "source_ip": "10.20.1.10",
+    "db_name": "procurement",
+    "session_id": "b86fb472-b58a-46fd-bfe3-a5beb5c50a59",
+    "first_seen": "2026-08-11T02:40:00Z",
+    "last_seen": "2026-08-11T03:05:00Z",
+    "event_count": 1,
+    "affected_objects": [
+      "public.employees"
+    ],
+    "attack_technique": [
+      "T1213",
+      "T1005"
+    ],
+    "evidence": [
+      {
+        "ts": "2026-08-11T02:40:00Z",
+        "statement": "SELECT count(*) FROM employees",
+        "rows": 1,
+        "duration_ms": 0.93,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-11T02:45:00Z",
+        "statement": "SELECT employee_id, full_name, email, salary, national_id, bank_account FROM employees ORDER BY employee_id LIMIT 300 OFFSET 0",
+        "rows": 300,
+        "duration_ms": 2.64,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-11T02:50:00Z",
+        "statement": "SELECT employee_id, full_name, email, salary, national_id, bank_account FROM employees ORDER BY employee_id LIMIT 300 OFFSET 300",
+        "rows": 300,
+        "duration_ms": 1.69,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-11T02:55:00Z",
+        "statement": "SELECT employee_id, full_name, email, salary, national_id, bank_account FROM employees ORDER BY employee_id LIMIT 300 OFFSET 600",
+        "rows": 300,
+        "duration_ms": 1.58,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-11T03:00:00Z",
+        "statement": "SELECT employee_id, full_name, email, salary, national_id, bank_account FROM employees ORDER BY employee_id LIMIT 300 OFFSET 900",
+        "rows": 300,
+        "duration_ms": 1.74,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-11T03:05:00Z",
+        "statement": "COPY (SELECT employee_id, national_id, bank_account, salary FROM employees) TO STDOUT WITH CSV HEADER",
+        "rows": 1200,
+        "duration_ms": 1.97,
+        "matched_rules": [
+          "PG-EXF-002"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      }
+    ],
+    "baseline_context": {
+      "typical_daily_rows": 30761,
+      "typical_hours_utc": "08:00-17:00",
+      "usual_source_ips": [
+        "10.20.1.10"
+      ],
+      "note": "Role app_service normally returns about 30761 rows per simulated day across the 14-day baseline, almost all inside 08:00-17:00."
+    },
+    "change_window": null
+  }
+}

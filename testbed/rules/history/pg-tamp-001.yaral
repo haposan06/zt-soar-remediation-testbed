@@ -1,0 +1,33 @@
+rule pg_tamp_001_unpredicated_or_mass_dml {
+
+  meta:
+    author         = "thesis-lab"
+    description    = "DELETE or UPDATE without predicate or with mass row impact: a DELETE FROM or UPDATE against a commercial procurement table that either carries no WHERE clause or affects 500 or more rows."
+    rule_id        = "PG-TAMP-001"
+    rule_name      = "DELETE or UPDATE without predicate or with mass row impact"
+    scenario_class = "S3"
+    severity       = "Critical"
+    mitre_attack   = "T1565.001"
+    data_source    = "Teleport db.session.query (TELEPORT_DB_AUDIT)"
+
+  events:
+    $e.metadata.event_type   = "GENERIC_EVENT"
+    $e.metadata.product_name = "Teleport"
+    $e.metadata.vendor_name  = "Gravitational"
+    $e.metadata.log_type     = "TELEPORT_DB_AUDIT"
+
+    // db_query matches ^\s*(delete from|update)\b
+    re.regex($e.target.resource.attribute.labels["db_query"], `(?i)^\s*(delete\s+from|update)\b`)
+
+    // db_query matches the commercial-table regex
+    re.regex($e.target.resource.attribute.labels["db_query"], `(?i)(tenders|bids|contracts|payments|vendors)`)
+
+    // no WHERE clause, OR 500 or more rows affected
+    (
+      not re.regex($e.target.resource.attribute.labels["db_query"], `(?i)\bwhere\b`) or
+      strings.to_int($e.target.resource.attribute.labels["rows"]) >= 500
+    )
+
+  condition:
+    $e
+}

@@ -1,0 +1,113 @@
+{
+  "package_version": "rating-package-v1",
+  "generated_at": "2026-09-12T15:21:49Z",
+  "shuffle_seed": 20260912,
+  "artefact_count": 126,
+  "withheld_truncated": [],
+  "artefacts_per_arm": {
+    "gemini": 54,
+    "claude": 54,
+    "baseline": 18
+  },
+  "source_files": [
+    "runs/final-gemini-s1/artefacts.jsonl",
+    "runs/final-gemini-s2/artefacts.jsonl",
+    "runs/final-gemini-s3/artefacts.jsonl",
+    "runs/final-gemini-s4/artefacts.jsonl",
+    "runs/final-gemini/artefacts.jsonl",
+    "runs/final-claude-s1/artefacts.jsonl",
+    "runs/final-claude-s2/artefacts.jsonl",
+    "runs/final-claude-s3/artefacts.jsonl",
+    "runs/final-claude-s4/artefacts.jsonl",
+    "runs/final-claude/artefacts.jsonl",
+    "runs/final-baseline/artefacts.jsonl"
+  ],
+  "raters": [
+    "r1",
+    "r2"
+  ],
+  "primary_rater": "r1",
+  "reliability_subsample": {
+    "enabled": true,
+    "requested": 40,
+    "drawn": 40,
+    "stratified_by": [
+      "arm",
+      "scenario_class"
+    ],
+    "coverage_guaranteed": [
+      "arm",
+      "scenario_class",
+      "alert_id"
+    ],
+    "coverage": {
+      "arm": {
+        "covered": 3,
+        "total": 3,
+        "missing": []
+      },
+      "scenario_class": {
+        "covered": 4,
+        "total": 4,
+        "missing": []
+      },
+      "alert_id": {
+        "covered": 18,
+        "total": 18,
+        "missing": []
+      }
+    },
+    "draw_seed": 20260913,
+    "strata_counts": {
+      "claude|S3": 4,
+      "claude|S1": 4,
+      "gemini|B1": 5,
+      "claude|B1": 4,
+      "gemini|S2": 3,
+      "baseline|S2": 3,
+      "baseline|S3": 1,
+      "baseline|B1": 4,
+      "gemini|S1": 3,
+      "gemini|S3": 4,
+      "baseline|S1": 2,
+      "claude|S2": 3
+    },
+    "file": "rating/rater2_subsample.json",
+    "manifest": "rating/subsample_manifest.csv",
+    "rationale": "The second rater double codes a stratified subsample rather than the whole set. The draw is seeded, recorded here and in subsample_manifest.csv, and covers every arm, every behaviour class and every alert at least once. Cohen's kappa is computed on this overlap; Krippendorff's alpha uses the same artefacts but does not require the overlap to be complete. Outcome rates come from the primary rater's full set after adjudication of the overlap."
+  },
+  "stripped_fields": [
+    "arm",
+    "attempts",
+    "endpoint",
+    "extra_keys",
+    "finish_reason",
+    "harness_version",
+    "is_true_positive",
+    "json_mode",
+    "latency_ms",
+    "max_tokens",
+    "missing_keys",
+    "model_id",
+    "model_version",
+    "parse_repaired",
+    "prompt_fingerprint",
+    "prompt_version",
+    "reasoning_detail",
+    "reasoning_mode",
+    "request_timestamp",
+    "sample_index",
+    "scenario_class",
+    "strict_parse_error",
+    "temperature",
+    "thinking_budget",
+    "top_p",
+    "truncated"
+  ],
+  "duplicate_artefact_ids": [],
+  "reference_card": {
+    "inlined": true,
+    "source": "harness/rating-kit/reference.md"
+  },
+  "blinding_limitation": "The label is hidden but style is not. The baseline arm is a template playbook whose prose repeats across alerts, so a rater may come to recognise it. The two model arms also differ in house style: rationale structure, hedging habits and the shape of a malformed response (a fenced code block versus a prose preamble) can hint at the vendor, and a model may refer to itself in the rationale. Raters were told not to guess the source. Report this as a limitation."
+}

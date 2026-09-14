@@ -1,0 +1,35 @@
+{
+  "harness_version": "generate-v1.1.0",
+  "run_started": "2026-09-12T15:03:26Z",
+  "run_finished": "2026-09-12T15:17:41Z",
+  "arm": "claude",
+  "model_id": "claude-opus-4-6",
+  "endpoint": "vertex-anthropic:<redacted-project>:global",
+  "alerts_file": "data/alerts.json",
+  "alert_count": 4,
+  "samples": 3,
+  "artefacts_written": 12,
+  "prompt_version": "soar-remediation-v1.1.0",
+  "prompt_fingerprint": "bba831dba86cd027",
+  "alerts_schema_version": "alerts-schema-v1",
+  "temperature": null,
+  "top_p": null,
+  "max_tokens": 16384,
+  "max_tokens_explicit": false,
+  "max_tokens_arm_default": 16384,
+  "json_mode": false,
+  "thinking_budget": 0,
+  "reasoning_mode": "high",
+  "reasoning_detail": "claude:thinking=adaptive,effort=high",
+  "locations_tried": [
+    "global",
+    "us-central1"
+  ],
+  "sdk_versions": {
+    "google-genai": "2.22.0",
+    "anthropic": "1.5.0"
+  },
+  "max_retries": 4,
+  "python": "3.12.4",
+  "transport_failures": []
+}

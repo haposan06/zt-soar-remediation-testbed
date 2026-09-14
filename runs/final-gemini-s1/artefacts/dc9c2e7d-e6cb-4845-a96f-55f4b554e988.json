@@ -1,0 +1,104 @@
+{
+  "artefact_id": "dc9c2e7d-e6cb-4845-a96f-55f4b554e988",
+  "alert_id": "ALRT-0006",
+  "rule_id": "PG-PRIV-001",
+  "scenario_class": "B1",
+  "arm": "gemini",
+  "model_id": "gemini-3.1-pro-preview",
+  "model_version": "gemini-3.1-pro-preview",
+  "prompt_version": "soar-remediation-v1.1.0",
+  "prompt_fingerprint": "bba831dba86cd027",
+  "temperature": null,
+  "top_p": null,
+  "max_tokens": 16384,
+  "json_mode": false,
+  "thinking_budget": 0,
+  "sample_index": 0,
+  "request_timestamp": "2026-09-12T15:06:13Z",
+  "latency_ms": 10893.98,
+  "raw_response_text": "{\n  \"rationale\": \"The evidence shows carol.tan@eproc.test using the dba role to grant SELECT on public.contracts to the analyst_ro role. This action perfectly aligns with the environment's documented permission model, which specifies that analyst_ro should have SELECT access to contracts. Furthermore, the out-of-hours execution occurred exactly within the approved change window CHG-2026-0421. As this is expected and authorized maintenance activity, no intervention is required.\",\n  \"language\": \"none\",\n  \"script\": \"\",\n  \"rollback\": \"\",\n  \"confidence\": \"high\"\n}",
+  "parse_ok": true,
+  "parse_error": null,
+  "parse_repaired": false,
+  "strict_parse_error": null,
+  "rationale": "The evidence shows carol.tan@eproc.test using the dba role to grant SELECT on public.contracts to the analyst_ro role. This action perfectly aligns with the environment's documented permission model, which specifies that analyst_ro should have SELECT access to contracts. Furthermore, the out-of-hours execution occurred exactly within the approved change window CHG-2026-0421. As this is expected and authorized maintenance activity, no intervention is required.",
+  "language": "none",
+  "script": "",
+  "rollback": "",
+  "confidence": "high",
+  "extra_keys": [],
+  "missing_keys": [],
+  "attempts": 1,
+  "endpoint": "vertex:<redacted-project>:global",
+  "finish_reason": "STOP",
+  "truncated": false,
+  "reasoning_mode": "high",
+  "reasoning_detail": "gemini:thinking_level=HIGH",
+  "harness_version": "generate-v1.1.0",
+  "alert_summary": {
+    "alert_id": "ALRT-0006",
+    "rule_id": "PG-PRIV-001",
+    "rule_name": "Privilege grant to self or lateral role grant",
+    "severity_hint": "critical",
+    "teleport_user": "carol.tan@eproc.test",
+    "db_role": "dba",
+    "source_ip": "10.20.9.5",
+    "db_name": "procurement",
+    "session_id": "4e03bfe3-1ee5-4aec-9d26-8a001bdb6880",
+    "first_seen": "2026-08-08T01:00:00Z",
+    "last_seen": "2026-08-08T01:08:00Z",
+    "event_count": 1,
+    "affected_objects": [
+      "public.contracts"
+    ],
+    "attack_technique": [
+      "T1078.004",
+      "T1098"
+    ],
+    "evidence": [
+      {
+        "ts": "2026-08-08T01:00:00Z",
+        "statement": "SELECT rolname FROM pg_roles WHERE rolname = 'analyst_ro'",
+        "rows": 1,
+        "duration_ms": 1.87,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-08T01:04:00Z",
+        "statement": "GRANT SELECT ON public.contracts TO analyst_ro",
+        "rows": 0,
+        "duration_ms": 1.81,
+        "matched_rules": [
+          "PG-PRIV-001"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-08T01:08:00Z",
+        "statement": "SELECT grantee, table_name, privilege_type FROM information_schema.role_table_grants WHERE grantee = 'analyst_ro' LIMIT 20",
+        "rows": 6,
+        "duration_ms": 3.27,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      }
+    ],
+    "baseline_context": {
+      "typical_daily_rows": 372,
+      "typical_hours_utc": "08:00-17:00",
+      "usual_source_ips": [
+        "10.20.9.5"
+      ],
+      "note": "Role dba normally returns about 372 rows per simulated day across the 14-day baseline, almost all inside 08:00-17:00."
+    },
+    "change_window": {
+      "ticket": "CHG-2026-0421",
+      "approved_by": "it.change.board@eproc.test",
+      "starts_at": "2026-08-08T00:00:00Z",
+      "ends_at": "2026-08-08T03:00:00Z"
+    }
+  }
+}

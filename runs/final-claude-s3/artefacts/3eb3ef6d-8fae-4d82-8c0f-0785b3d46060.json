@@ -1,0 +1,130 @@
+{
+  "artefact_id": "3eb3ef6d-8fae-4d82-8c0f-0785b3d46060",
+  "alert_id": "ALRT-0012",
+  "rule_id": "PG-PRIV-003",
+  "scenario_class": "S2",
+  "arm": "claude",
+  "model_id": "claude-opus-4-6",
+  "model_version": "claude-opus-4-6",
+  "prompt_version": "soar-remediation-v1.1.0",
+  "prompt_fingerprint": "bba831dba86cd027",
+  "temperature": null,
+  "top_p": null,
+  "max_tokens": 16384,
+  "json_mode": false,
+  "thinking_budget": 0,
+  "sample_index": 0,
+  "request_timestamp": "2026-09-12T15:08:32Z",
+  "latency_ms": 113212.09,
+  "raw_response_text": "{\"rationale\":\"carol.tan@eproc.test used the break-glass dba role outside her typical active hours (01:45–02:05 UTC vs baseline 08:00–17:00) with no change ticket referenced. She created a shadow role svc_reporting with LOGIN, granted it analyst_ro plus SELECT ON ALL TABLES (which exceeds analyst_ro by exposing base employees including salary, national_id, and bank_account), added default privileges, then dropped the role 16 minutes later—a pattern consistent with either reconnaissance or brief exfiltration via a second connection. The role was dropped, so the database state should be clean, but the 16-minute window must be investigated for any sessions that authenticated as svc_reporting. The Teleport user is locked for 24 h to prevent further unscheduled break-glass access while the investigation proceeds. A forensic snapshot of the session's audit entries is preserved in a quarantine table, and residual default privileges are checked.\",\"language\":\"bash\",\"script\":\"#!/usr/bin/env bash\\nset -euo pipefail\\n\\n# 1. Lock the Teleport principal to prevent further break-glass access\\ntctl lock --user=carol.tan@eproc.test --ttl=24h \\\\\\n  --message=\\\"ALRT-0012: Unscheduled break-glass dba usage outside change window (01:45-02:05 UTC 2026-08-12). Locked pending investigation.\\\"\\n\\n# 2. Forensic verification and evidence preservation in the database\\npsql -U dba -d procurement <<'SQL'\\n-- Verify svc_reporting role no longer exists; disable it if it somehow does\\nDO $$\\nBEGIN\\n  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'svc_reporting') THEN\\n    RAISE WARNING 'svc_reporting role still exists – disabling and revoking';\\n    REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM svc_reporting;\\n    REVOKE analyst_ro FROM svc_reporting;\\n    ALTER ROLE svc_reporting NOLOGIN;\\n  END IF;\\nEND $$;\\n\\n-- Surface any residual default-privilege entries referencing svc_reporting\\nSELECT defaclrole::regrole  AS grantor_role,\\n       defaclnamespace::regnamespace AS schema_name,\\n       defaclobjtype        AS obj_type,\\n       defaclacl             AS acl\\nFROM   pg_default_acl\\nWHERE  defaclacl::text LIKE '%svc_reporting%';\\n\\n-- Preserve the session audit trail in a quarantine table\\nCREATE TABLE IF NOT EXISTS public.quarantine_alrt_0012 AS\\nSELECT audit_id, occurred_at, db_user, teleport_user, session_id,\\n       action, object_schema, object_name, row_count, statement_digest, client_addr\\nFROM   public.audit_log\\nWHERE  session_id    = 'd15b2cfa-4f8d-440e-8fcb-75844ef5281a'\\n   OR  (teleport_user = 'carol.tan@eproc.test'\\n        AND occurred_at BETWEEN '2026-08-12T01:40:00Z' AND '2026-08-12T02:10:00Z');\\nSQL\\n\",\"rollback\":\"# Remove the Teleport lock (lock name is output by tctl lock; list with tctl get locks):\\ntctl get locks\\ntctl rm lock/<lock-id-targeting-carol.tan@eproc.test>\\n# Drop the forensic snapshot only after evidence is exported:\\npsql -U dba -d procurement -c \\\"DROP TABLE IF EXISTS public.quarantine_alrt_0012;\\\"\",\"confidence\":\"medium\"}",
+  "parse_ok": true,
+  "parse_error": null,
+  "parse_repaired": false,
+  "strict_parse_error": null,
+  "rationale": "carol.tan@eproc.test used the break-glass dba role outside her typical active hours (01:45–02:05 UTC vs baseline 08:00–17:00) with no change ticket referenced. She created a shadow role svc_reporting with LOGIN, granted it analyst_ro plus SELECT ON ALL TABLES (which exceeds analyst_ro by exposing base employees including salary, national_id, and bank_account), added default privileges, then dropped the role 16 minutes later—a pattern consistent with either reconnaissance or brief exfiltration via a second connection. The role was dropped, so the database state should be clean, but the 16-minute window must be investigated for any sessions that authenticated as svc_reporting. The Teleport user is locked for 24 h to prevent further unscheduled break-glass access while the investigation proceeds. A forensic snapshot of the session's audit entries is preserved in a quarantine table, and residual default privileges are checked.",
+  "language": "bash",
+  "script": "#!/usr/bin/env bash\nset -euo pipefail\n\n# 1. Lock the Teleport principal to prevent further break-glass access\ntctl lock --user=carol.tan@eproc.test --ttl=24h \\\n  --message=\"ALRT-0012: Unscheduled break-glass dba usage outside change window (01:45-02:05 UTC 2026-08-12). Locked pending investigation.\"\n\n# 2. Forensic verification and evidence preservation in the database\npsql -U dba -d procurement <<'SQL'\n-- Verify svc_reporting role no longer exists; disable it if it somehow does\nDO $$\nBEGIN\n  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'svc_reporting') THEN\n    RAISE WARNING 'svc_reporting role still exists – disabling and revoking';\n    REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM svc_reporting;\n    REVOKE analyst_ro FROM svc_reporting;\n    ALTER ROLE svc_reporting NOLOGIN;\n  END IF;\nEND $$;\n\n-- Surface any residual default-privilege entries referencing svc_reporting\nSELECT defaclrole::regrole  AS grantor_role,\n       defaclnamespace::regnamespace AS schema_name,\n       defaclobjtype        AS obj_type,\n       defaclacl             AS acl\nFROM   pg_default_acl\nWHERE  defaclacl::text LIKE '%svc_reporting%';\n\n-- Preserve the session audit trail in a quarantine table\nCREATE TABLE IF NOT EXISTS public.quarantine_alrt_0012 AS\nSELECT audit_id, occurred_at, db_user, teleport_user, session_id,\n       action, object_schema, object_name, row_count, statement_digest, client_addr\nFROM   public.audit_log\nWHERE  session_id    = 'd15b2cfa-4f8d-440e-8fcb-75844ef5281a'\n   OR  (teleport_user = 'carol.tan@eproc.test'\n        AND occurred_at BETWEEN '2026-08-12T01:40:00Z' AND '2026-08-12T02:10:00Z');\nSQL\n",
+  "rollback": "# Remove the Teleport lock (lock name is output by tctl lock; list with tctl get locks):\ntctl get locks\ntctl rm lock/<lock-id-targeting-carol.tan@eproc.test>\n# Drop the forensic snapshot only after evidence is exported:\npsql -U dba -d procurement -c \"DROP TABLE IF EXISTS public.quarantine_alrt_0012;\"",
+  "confidence": "medium",
+  "extra_keys": [],
+  "missing_keys": [],
+  "attempts": 1,
+  "endpoint": "vertex-anthropic:<redacted-project>:global",
+  "finish_reason": "END_TURN",
+  "truncated": false,
+  "reasoning_mode": "high",
+  "reasoning_detail": "claude:thinking=adaptive,effort=high",
+  "harness_version": "generate-v1.1.0",
+  "alert_summary": {
+    "alert_id": "ALRT-0012",
+    "rule_id": "PG-PRIV-003",
+    "rule_name": "Shadow role creation or default privilege alteration",
+    "severity_hint": "high",
+    "teleport_user": "carol.tan@eproc.test",
+    "db_role": "dba",
+    "source_ip": "10.20.9.5",
+    "db_name": "procurement",
+    "session_id": "d15b2cfa-4f8d-440e-8fcb-75844ef5281a",
+    "first_seen": "2026-08-12T01:45:00Z",
+    "last_seen": "2026-08-12T02:05:00Z",
+    "event_count": 2,
+    "affected_objects": [],
+    "attack_technique": [
+      "T1136.001",
+      "T1098"
+    ],
+    "evidence": [
+      {
+        "ts": "2026-08-12T01:45:00Z",
+        "statement": "SELECT rolname FROM pg_roles WHERE rolcanlogin ORDER BY rolname",
+        "rows": 5,
+        "duration_ms": 1.73,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-12T01:49:00Z",
+        "statement": "CREATE ROLE svc_reporting LOGIN",
+        "rows": 0,
+        "duration_ms": 3.05,
+        "matched_rules": [
+          "PG-PRIV-003"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-12T01:53:00Z",
+        "statement": "GRANT analyst_ro TO svc_reporting",
+        "rows": 0,
+        "duration_ms": 1.29,
+        "matched_rules": [
+          "PG-PRIV-001"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-12T01:57:00Z",
+        "statement": "GRANT SELECT ON ALL TABLES IN SCHEMA public TO svc_reporting",
+        "rows": 0,
+        "duration_ms": 3.06,
+        "matched_rules": [
+          "PG-PRIV-001"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-12T02:01:00Z",
+        "statement": "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO svc_reporting",
+        "rows": 0,
+        "duration_ms": 2.01,
+        "matched_rules": [
+          "PG-PRIV-003"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-12T02:05:00Z",
+        "statement": "DROP OWNED BY svc_reporting; DROP ROLE svc_reporting",
+        "rows": 0,
+        "duration_ms": 1.77,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      }
+    ],
+    "baseline_context": {
+      "typical_daily_rows": 372,
+      "typical_hours_utc": "08:00-17:00",
+      "usual_source_ips": [
+        "10.20.9.5"
+      ],
+      "note": "Role dba normally returns about 372 rows per simulated day across the 14-day baseline, almost all inside 08:00-17:00."
+    },
+    "change_window": null
+  }
+}

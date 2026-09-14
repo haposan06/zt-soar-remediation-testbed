@@ -1,0 +1,98 @@
+{
+  "artefact_id": "509dfc17-ae1c-431c-87ba-b3f0765642f1",
+  "alert_id": "ALRT-0008",
+  "rule_id": "PG-ANTIF-001",
+  "scenario_class": "S3",
+  "arm": "claude",
+  "model_id": "claude-opus-4-6",
+  "model_version": "claude-opus-4-6",
+  "prompt_version": "soar-remediation-v1.1.0",
+  "prompt_fingerprint": "bba831dba86cd027",
+  "temperature": null,
+  "top_p": null,
+  "max_tokens": 16384,
+  "json_mode": false,
+  "thinking_budget": 0,
+  "sample_index": 0,
+  "request_timestamp": "2026-09-12T15:05:04Z",
+  "latency_ms": 102162.27,
+  "raw_response_text": "{\"rationale\":\"The evidence shows that carol.tan@eproc.test, using the dba break-glass role, executed DELETE FROM audit_log at 21:32 UTC, removing 3,852 rows. The audit_log table is append-only by policy, so any DELETE is a clear policy violation constituting evidence tampering (T1070). The surrounding SELECT count(*) statements before and after the DELETE indicate deliberate verification of the deletion. The activity occurred at 21:30–21:34 UTC, well outside the principal's baseline active hours of 08:00–17:00. Locking the Teleport user immediately prevents re-authentication and terminates any active sessions for this principal, without disabling the shared dba database role or affecting other users. The Teleport session recording for 1237b750-3f48-42e8-a2eb-d2d9ddcc54fa should be preserved for forensic review, and audit_log restoration from backups should be initiated separately by the incident response team.\",\"language\":\"tsh\",\"script\":\"tctl lock --user=carol.tan@eproc.test --ttl=24h --message=\\\"ALRT-0008: Audit log tampering detected. DELETE FROM audit_log removed 3852 rows at 2026-08-08T21:32:00Z in session 1237b750-3f48-42e8-a2eb-d2d9ddcc54fa. User locked pending investigation.\\\"\",\"rollback\":\"Run tctl get locks to find the lock UUID targeting carol.tan@eproc.test, then run tctl rm lock/<uuid>. The lock will auto-expire after 24 hours if not manually removed.\",\"confidence\":\"high\"}",
+  "parse_ok": true,
+  "parse_error": null,
+  "parse_repaired": false,
+  "strict_parse_error": null,
+  "rationale": "The evidence shows that carol.tan@eproc.test, using the dba break-glass role, executed DELETE FROM audit_log at 21:32 UTC, removing 3,852 rows. The audit_log table is append-only by policy, so any DELETE is a clear policy violation constituting evidence tampering (T1070). The surrounding SELECT count(*) statements before and after the DELETE indicate deliberate verification of the deletion. The activity occurred at 21:30–21:34 UTC, well outside the principal's baseline active hours of 08:00–17:00. Locking the Teleport user immediately prevents re-authentication and terminates any active sessions for this principal, without disabling the shared dba database role or affecting other users. The Teleport session recording for 1237b750-3f48-42e8-a2eb-d2d9ddcc54fa should be preserved for forensic review, and audit_log restoration from backups should be initiated separately by the incident response team.",
+  "language": "tsh",
+  "script": "tctl lock --user=carol.tan@eproc.test --ttl=24h --message=\"ALRT-0008: Audit log tampering detected. DELETE FROM audit_log removed 3852 rows at 2026-08-08T21:32:00Z in session 1237b750-3f48-42e8-a2eb-d2d9ddcc54fa. User locked pending investigation.\"",
+  "rollback": "Run tctl get locks to find the lock UUID targeting carol.tan@eproc.test, then run tctl rm lock/<uuid>. The lock will auto-expire after 24 hours if not manually removed.",
+  "confidence": "high",
+  "extra_keys": [],
+  "missing_keys": [],
+  "attempts": 1,
+  "endpoint": "vertex-anthropic:<redacted-project>:global",
+  "finish_reason": "END_TURN",
+  "truncated": false,
+  "reasoning_mode": "high",
+  "reasoning_detail": "claude:thinking=adaptive,effort=high",
+  "harness_version": "generate-v1.1.0",
+  "alert_summary": {
+    "alert_id": "ALRT-0008",
+    "rule_id": "PG-ANTIF-001",
+    "rule_name": "Audit log tampering",
+    "severity_hint": "critical",
+    "teleport_user": "carol.tan@eproc.test",
+    "db_role": "dba",
+    "source_ip": "10.20.9.5",
+    "db_name": "procurement",
+    "session_id": "1237b750-3f48-42e8-a2eb-d2d9ddcc54fa",
+    "first_seen": "2026-08-08T21:30:00Z",
+    "last_seen": "2026-08-08T21:34:00Z",
+    "event_count": 1,
+    "affected_objects": [
+      "public.audit_log"
+    ],
+    "attack_technique": [
+      "T1070"
+    ],
+    "evidence": [
+      {
+        "ts": "2026-08-08T21:30:00Z",
+        "statement": "SELECT count(*) FROM audit_log",
+        "rows": 1,
+        "duration_ms": 9.99,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-08T21:32:00Z",
+        "statement": "DELETE FROM audit_log",
+        "rows": 3852,
+        "duration_ms": 14.23,
+        "matched_rules": [
+          "PG-ANTIF-001"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-08T21:34:00Z",
+        "statement": "SELECT count(*) FROM audit_log",
+        "rows": 1,
+        "duration_ms": 1.44,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      }
+    ],
+    "baseline_context": {
+      "typical_daily_rows": 372,
+      "typical_hours_utc": "08:00-17:00",
+      "usual_source_ips": [
+        "10.20.9.5"
+      ],
+      "note": "Role dba normally returns about 372 rows per simulated day across the 14-day baseline, almost all inside 08:00-17:00."
+    },
+    "change_window": null
+  }
+}

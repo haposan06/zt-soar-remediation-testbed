@@ -1,0 +1,38 @@
+rule pg_tamp_001_unpredicated_or_mass_dml {
+
+  meta:
+    author         = "thesis-lab"
+    description    = "DELETE or UPDATE without predicate or with mass row impact: a DELETE FROM or UPDATE against a commercial procurement table that either carries no WHERE clause or affects 500 or more rows."
+    rule_id        = "PG-TAMP-001"
+    rule_name      = "DELETE or UPDATE without predicate or with mass row impact"
+    scenario_class = "S3"
+    severity       = "Critical"
+    mitre_attack   = "T1565.001"
+    data_source    = "Teleport db.session.query, log type TELEPORT_ACCESS_PLANE, product TELEPORT_DB_AUDIT"
+
+  events:
+    // source scoping, verified against live TELEPORT_ACCESS_PLANE events (custom parser)
+    $e.metadata.log_type           = "TELEPORT_ACCESS_PLANE"
+    $e.metadata.product_name       = "TELEPORT_DB_AUDIT"
+    $e.metadata.vendor_name        = "TELEPORT"
+    $e.metadata.event_type         = "USER_RESOURCE_ACCESS"
+    $e.metadata.product_event_type = "db.session.query"
+
+    // rows_affected is a database-side enrichment. Teleport telemetry carries no
+    // row count, so this predicate is not evaluable from the proxy stream alone.
+
+    // statement text matches ^\s*(delete from|update)\b
+    re.regex($e.security_result.description, `(?i)^\s*(delete\s+from|update)\b`)
+
+    // statement text matches the commercial-table regex
+    re.regex($e.security_result.description, `(?i)(tenders|bids|contracts|payments|vendors)`)
+
+    // no WHERE clause, OR 500 or more rows affected
+    (
+      not re.regex($e.security_result.description, `(?i)\bwhere\b`) or
+      strings.to_int($e.additional.fields["rows_affected"]) >= 500
+    )
+
+  condition:
+    $e
+}

@@ -1,0 +1,41 @@
+rule pg_exf_001_unbounded_sensitive_read {
+
+  meta:
+    author         = "thesis-lab"
+    description    = "Unbounded read of sensitive employee or vendor columns: a SELECT touching salary, national identifier, bank account, tax identifier or scoring columns of the employees or vendors tables, issued without a LIMIT clause and returning 500 or more rows."
+    rule_id        = "PG-EXF-001"
+    rule_name      = "Unbounded read of sensitive employee or vendor columns"
+    scenario_class = "S1"
+    severity       = "High"
+    mitre_attack   = "T1213"
+    data_source    = "Teleport db.session.query, log type TELEPORT_ACCESS_PLANE, product TELEPORT_DB_AUDIT"
+
+  events:
+    // source scoping, verified against live TELEPORT_ACCESS_PLANE events (custom parser)
+    $e.metadata.log_type           = "TELEPORT_ACCESS_PLANE"
+    $e.metadata.product_name       = "TELEPORT_DB_AUDIT"
+    $e.metadata.vendor_name        = "TELEPORT"
+    $e.metadata.event_type         = "USER_RESOURCE_ACCESS"
+    $e.metadata.product_event_type = "db.session.query"
+
+    // rows_affected is a database-side enrichment. Teleport telemetry carries no
+    // row count, so this predicate is not evaluable from the proxy stream alone.
+
+    // statement text matches ^\s*select\b
+    re.regex($e.security_result.description, `(?i)^\s*select\b`)
+
+    // statement text matches the sensitive-column regex
+    re.regex($e.security_result.description, `(?i)(salary|national_id|bank_account|tax_id|bank_account_snapshot|technical_score|bid_amount)`)
+
+    // statement text reads from employees or vendors
+    re.regex($e.security_result.description, `(?i)\bfrom\s+(public\.)?(employees|vendors)\b`)
+
+    // statement text does NOT contain a LIMIT clause
+    not re.regex($e.security_result.description, `(?i)\blimit\b`)
+
+    // rows returned >= 500
+    strings.to_int($e.additional.fields["rows_affected"]) >= 500
+
+  condition:
+    $e
+}

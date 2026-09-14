@@ -1,0 +1,42 @@
+% !TEX root = ../main.tex
+%% Prompt Templates
+\section{Prompt Templates}
+\label{app:prompts}
+
+The prompt below was frozen before any artefact was generated and was shared
+unchanged by both model arms, so that neither model received a prompt-level
+advantage. It is zero-shot with respect to remediation: it supplies the database
+schema and the list of valid roles, as a real SOAR playbook would, but it contains no
+worked example of a correct remediation, which would have leaked the answer.
+
+The listing is reproduced verbatim from \code{lab/harness/prompts.py} at version
+\code{soar-remediation-v1.1.0}, fingerprint \code{bba831dba86cd027}, the version
+recorded in every artefact record.
+
+\lstinputlisting[language=Python,caption={Frozen prompt templates},label={lst:prompts}]{../lab/harness/prompts.py}
+
+\subsection{Response contract}
+
+Each arm was required to return a single JSON object with the following keys.
+
+\begin{table}[H]
+\centering
+\caption{Required response fields}
+\label{tab:app-response-contract}
+\small
+\begin{tabularx}{\textwidth}{@{}llX@{}}
+\toprule
+\textbf{Key} & \textbf{Type} & \textbf{Meaning} \\
+\midrule
+\code{rationale}  & string & Why this response addresses this alert \\
+\code{language}   & enum   & \code{sql}, \code{bash}, \code{tsh} or \code{none} \\
+\code{script}     & string & The executable body, empty when \code{language} is \code{none} \\
+\code{rollback}   & string & How to undo the action \\
+\code{confidence} & enum   & \code{high}, \code{medium} or \code{low} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+A response that could not be parsed as JSON was recorded with \code{parse\_ok} set to
+false and was rated on its raw text. Unparseable output is a real result and was not
+discarded or regenerated.

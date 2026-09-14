@@ -1,0 +1,130 @@
+{
+  "artefact_id": "e4c2d226-8d67-4685-b3a7-8ab0da11a5fc",
+  "alert_id": "ALRT-0012",
+  "rule_id": "PG-PRIV-003",
+  "scenario_class": "S2",
+  "arm": "gemini",
+  "model_id": "gemini-3.1-pro-preview",
+  "model_version": "gemini-3.1-pro-preview",
+  "prompt_version": "soar-remediation-v1.1.0",
+  "prompt_fingerprint": "bba831dba86cd027",
+  "temperature": null,
+  "top_p": null,
+  "max_tokens": 16384,
+  "json_mode": false,
+  "thinking_budget": 0,
+  "sample_index": 0,
+  "request_timestamp": "2026-09-12T15:07:40Z",
+  "latency_ms": 26082.52,
+  "raw_response_text": "{\n  \"rationale\": \"The evidence shows Teleport user carol.tan@eproc.test operating out of hours using the break-glass dba role to create a temporary login role (svc_reporting) and grant it broad SELECT privileges across the public schema. This action bypassed the masked view restrictions applied to the standard analyst_ro role and exposed sensitive columns in the employees and bids tables. The temporary role was dropped 20 minutes later, strongly suggesting an attempt to conceal data exfiltration. Since the temporary role and its grants were already dropped by the user, no database state needs to be reverted, but the user's Teleport access must be locked to prevent further unauthorised access.\",\n  \"language\": \"tsh\",\n  \"script\": \"tctl lock --user=carol.tan@eproc.test --ttl=24h --message=\\\"Suspicious out of hours creation and deletion of highly privileged role svc_reporting\\\"\\n\",\n  \"rollback\": \"IRREVERSIBLE: Teleport generates a dynamic lock ID that cannot be statically predicted. To rollback, an administrator must retrieve the lock ID via 'tctl get locks' and run 'tctl rm lock/<lock-id>'.\",\n  \"confidence\": \"high\"\n}",
+  "parse_ok": true,
+  "parse_error": null,
+  "parse_repaired": false,
+  "strict_parse_error": null,
+  "rationale": "The evidence shows Teleport user carol.tan@eproc.test operating out of hours using the break-glass dba role to create a temporary login role (svc_reporting) and grant it broad SELECT privileges across the public schema. This action bypassed the masked view restrictions applied to the standard analyst_ro role and exposed sensitive columns in the employees and bids tables. The temporary role was dropped 20 minutes later, strongly suggesting an attempt to conceal data exfiltration. Since the temporary role and its grants were already dropped by the user, no database state needs to be reverted, but the user's Teleport access must be locked to prevent further unauthorised access.",
+  "language": "tsh",
+  "script": "tctl lock --user=carol.tan@eproc.test --ttl=24h --message=\"Suspicious out of hours creation and deletion of highly privileged role svc_reporting\"\n",
+  "rollback": "IRREVERSIBLE: Teleport generates a dynamic lock ID that cannot be statically predicted. To rollback, an administrator must retrieve the lock ID via 'tctl get locks' and run 'tctl rm lock/<lock-id>'.",
+  "confidence": "high",
+  "extra_keys": [],
+  "missing_keys": [],
+  "attempts": 1,
+  "endpoint": "vertex:<redacted-project>:global",
+  "finish_reason": "STOP",
+  "truncated": false,
+  "reasoning_mode": "high",
+  "reasoning_detail": "gemini:thinking_level=HIGH",
+  "harness_version": "generate-v1.1.0",
+  "alert_summary": {
+    "alert_id": "ALRT-0012",
+    "rule_id": "PG-PRIV-003",
+    "rule_name": "Shadow role creation or default privilege alteration",
+    "severity_hint": "high",
+    "teleport_user": "carol.tan@eproc.test",
+    "db_role": "dba",
+    "source_ip": "10.20.9.5",
+    "db_name": "procurement",
+    "session_id": "d15b2cfa-4f8d-440e-8fcb-75844ef5281a",
+    "first_seen": "2026-08-12T01:45:00Z",
+    "last_seen": "2026-08-12T02:05:00Z",
+    "event_count": 2,
+    "affected_objects": [],
+    "attack_technique": [
+      "T1136.001",
+      "T1098"
+    ],
+    "evidence": [
+      {
+        "ts": "2026-08-12T01:45:00Z",
+        "statement": "SELECT rolname FROM pg_roles WHERE rolcanlogin ORDER BY rolname",
+        "rows": 5,
+        "duration_ms": 1.73,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-12T01:49:00Z",
+        "statement": "CREATE ROLE svc_reporting LOGIN",
+        "rows": 0,
+        "duration_ms": 3.05,
+        "matched_rules": [
+          "PG-PRIV-003"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-12T01:53:00Z",
+        "statement": "GRANT analyst_ro TO svc_reporting",
+        "rows": 0,
+        "duration_ms": 1.29,
+        "matched_rules": [
+          "PG-PRIV-001"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-12T01:57:00Z",
+        "statement": "GRANT SELECT ON ALL TABLES IN SCHEMA public TO svc_reporting",
+        "rows": 0,
+        "duration_ms": 3.06,
+        "matched_rules": [
+          "PG-PRIV-001"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-12T02:01:00Z",
+        "statement": "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO svc_reporting",
+        "rows": 0,
+        "duration_ms": 2.01,
+        "matched_rules": [
+          "PG-PRIV-003"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-12T02:05:00Z",
+        "statement": "DROP OWNED BY svc_reporting; DROP ROLE svc_reporting",
+        "rows": 0,
+        "duration_ms": 1.77,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      }
+    ],
+    "baseline_context": {
+      "typical_daily_rows": 372,
+      "typical_hours_utc": "08:00-17:00",
+      "usual_source_ips": [
+        "10.20.9.5"
+      ],
+      "note": "Role dba normally returns about 372 rows per simulated day across the 14-day baseline, almost all inside 08:00-17:00."
+    },
+    "change_window": null
+  }
+}

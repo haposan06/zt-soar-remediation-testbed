@@ -1,0 +1,61 @@
+# Teleport 17 - single-node auth + proxy + db_service for the Monash thesis lab.
+# Docs used:
+#  - https://goteleport.com/docs/reference/config/  (config schema; `storage` is a
+#    top-level `teleport:` section -- confirmed against lib/config/fileconf.go Global struct)
+#  - https://goteleport.com/docs/reference/monitoring/audit/  (dir backend writes
+#    newline-delimited JSON, one file per day, under <audit_events_uri>/<auth-uuid>/)
+#  - https://goteleport.com/docs/enroll-resources/database-access/enroll-self-hosted-databases/postgres-self-hosted/
+version: v3
+
+teleport:
+  nodename: thesis-lab
+  data_dir: /var/lib/teleport
+  log:
+    output: stderr
+    severity: INFO
+    format:
+      output: json
+  # Audit storage. `dir` backend => JSON events on the local filesystem.
+  # /var/lib/teleport/log is bind-mounted to ./audit on the host.
+  storage:
+    type: dir
+    audit_events_uri: ['file:///var/lib/teleport/log']
+    audit_sessions_uri: 'file:///var/lib/teleport/log/sessions'
+
+auth_service:
+  enabled: "yes"
+  cluster_name: thesis-lab
+  listen_addr: 0.0.0.0:3025
+  # Single-port mode: db tunnels are multiplexed over the proxy web port 3080.
+  proxy_listener_mode: multiplex
+  authentication:
+    type: local
+    # NOTE: Teleport 17.7.x refuses to start with `second_factor: "off"`
+    # ("cannot disable multi-factor authentication"), so MFA cannot be turned off
+    # in this version. The lab never performs an interactive `tsh login`; it uses
+    # non-interactive identity files minted with `tctl auth sign --user=...`,
+    # which are issued directly by the Auth Service and therefore bypass the
+    # second-factor prompt entirely. See scripts/setup.sh.
+    second_factor: "otp"
+  session_recording: "node"
+
+proxy_service:
+  enabled: "yes"
+  web_listen_addr: 0.0.0.0:3080
+  public_addr: ["localhost:3080"]
+  # No ACME: Teleport generates a self-signed cert; clients use `tsh --insecure`.
+  acme:
+    enabled: "no"
+
+ssh_service:
+  enabled: "no"
+
+db_service:
+  enabled: "yes"
+  databases:
+    - name: pg-lab
+      protocol: postgres
+      uri: "postgres:5432"
+      static_labels:
+        env: lab
+        cluster: thesis-lab

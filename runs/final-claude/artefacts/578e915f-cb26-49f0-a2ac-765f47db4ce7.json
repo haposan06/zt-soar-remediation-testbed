@@ -1,0 +1,151 @@
+{
+  "artefact_id": "578e915f-cb26-49f0-a2ac-765f47db4ce7",
+  "alert_id": "ALRT-0002",
+  "rule_id": "PG-EXF-003",
+  "scenario_class": "B1",
+  "arm": "claude",
+  "model_id": "claude-opus-4-6",
+  "model_version": "claude-opus-4-6",
+  "prompt_version": "soar-remediation-v1.1.0",
+  "prompt_fingerprint": "bba831dba86cd027",
+  "temperature": null,
+  "top_p": null,
+  "max_tokens": 16384,
+  "json_mode": false,
+  "thinking_budget": 0,
+  "sample_index": 0,
+  "request_timestamp": "2026-09-12T15:02:17Z",
+  "latency_ms": 19417.67,
+  "raw_response_text": "{\"rationale\":\"The paginated bulk read session (07598bbc-4316-4dfe-84d2-bacc071b1a9d) ran from 03:00 to 03:24 UTC on 2026-08-05, which falls entirely within the approved change window CHG-2026-0412 (02:00–06:00 UTC, approved by finance.director@eproc.test). The principal rina.hartono@eproc.test is a Finance Reporting analyst using the analyst_ro role, which is legitimately granted SELECT on payments; none of the queried columns include the sensitive bank_account_snapshot column. The source address 10.20.4.61 is one of the two known addresses for this principal. While the row volume (~12,001 rows) exceeds the 14-day daily baseline of ~3,947 and the activity is outside the typical 08:00–17:00 window, both anomalies are explained by the pre-approved change window. No automated intervention is warranted.\",\"language\":\"none\",\"script\":\"\",\"rollback\":\"\",\"confidence\":\"high\"}",
+  "parse_ok": true,
+  "parse_error": null,
+  "parse_repaired": false,
+  "strict_parse_error": null,
+  "rationale": "The paginated bulk read session (07598bbc-4316-4dfe-84d2-bacc071b1a9d) ran from 03:00 to 03:24 UTC on 2026-08-05, which falls entirely within the approved change window CHG-2026-0412 (02:00–06:00 UTC, approved by finance.director@eproc.test). The principal rina.hartono@eproc.test is a Finance Reporting analyst using the analyst_ro role, which is legitimately granted SELECT on payments; none of the queried columns include the sensitive bank_account_snapshot column. The source address 10.20.4.61 is one of the two known addresses for this principal. While the row volume (~12,001 rows) exceeds the 14-day daily baseline of ~3,947 and the activity is outside the typical 08:00–17:00 window, both anomalies are explained by the pre-approved change window. No automated intervention is warranted.",
+  "language": "none",
+  "script": "",
+  "rollback": "",
+  "confidence": "high",
+  "extra_keys": [],
+  "missing_keys": [],
+  "attempts": 1,
+  "endpoint": "vertex-anthropic:<redacted-project>:global",
+  "finish_reason": "END_TURN",
+  "truncated": false,
+  "reasoning_mode": "high",
+  "reasoning_detail": "claude:thinking=adaptive,effort=high",
+  "harness_version": "generate-v1.1.0",
+  "alert_summary": {
+    "alert_id": "ALRT-0002",
+    "rule_id": "PG-EXF-003",
+    "rule_name": "Sustained out-of-hours paginated bulk read",
+    "severity_hint": "high",
+    "teleport_user": "rina.hartono@eproc.test",
+    "db_role": "analyst_ro",
+    "source_ip": "10.20.4.61",
+    "db_name": "procurement",
+    "session_id": "07598bbc-4316-4dfe-84d2-bacc071b1a9d",
+    "first_seen": "2026-08-05T03:00:00Z",
+    "last_seen": "2026-08-05T03:24:00Z",
+    "event_count": 6,
+    "affected_objects": [
+      "public.payments"
+    ],
+    "attack_technique": [
+      "T1213",
+      "T1030"
+    ],
+    "evidence": [
+      {
+        "ts": "2026-08-05T03:00:00Z",
+        "statement": "SELECT count(*) FROM payments",
+        "rows": 1,
+        "duration_ms": 2.17,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-05T03:04:00Z",
+        "statement": "SELECT payment_id, contract_id, invoice_no, amount, paid_at, status FROM payments ORDER BY payment_id LIMIT 2000 OFFSET 0",
+        "rows": 2000,
+        "duration_ms": 5.39,
+        "matched_rules": [
+          "PG-EXF-003"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-05T03:08:00Z",
+        "statement": "SELECT payment_id, contract_id, invoice_no, amount, paid_at, status FROM payments ORDER BY payment_id LIMIT 2000 OFFSET 2000",
+        "rows": 2000,
+        "duration_ms": 4.08,
+        "matched_rules": [
+          "PG-EXF-003"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-05T03:12:00Z",
+        "statement": "SELECT payment_id, contract_id, invoice_no, amount, paid_at, status FROM payments ORDER BY payment_id LIMIT 2000 OFFSET 4000",
+        "rows": 2000,
+        "duration_ms": 3.99,
+        "matched_rules": [
+          "PG-EXF-003"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-05T03:16:00Z",
+        "statement": "SELECT payment_id, contract_id, invoice_no, amount, paid_at, status FROM payments ORDER BY payment_id LIMIT 2000 OFFSET 6000",
+        "rows": 2000,
+        "duration_ms": 4.27,
+        "matched_rules": [
+          "PG-EXF-003"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-05T03:20:00Z",
+        "statement": "SELECT payment_id, contract_id, invoice_no, amount, paid_at, status FROM payments ORDER BY payment_id LIMIT 2000 OFFSET 8000",
+        "rows": 2000,
+        "duration_ms": 3.9,
+        "matched_rules": [
+          "PG-EXF-003"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-05T03:24:00Z",
+        "statement": "SELECT payment_id, contract_id, invoice_no, amount, paid_at, status FROM payments ORDER BY payment_id LIMIT 2000 OFFSET 10000",
+        "rows": 2000,
+        "duration_ms": 10.49,
+        "matched_rules": [
+          "PG-EXF-003"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      }
+    ],
+    "baseline_context": {
+      "typical_daily_rows": 3947,
+      "typical_hours_utc": "08:00-17:00",
+      "usual_source_ips": [
+        "10.20.4.61",
+        "10.20.4.62"
+      ],
+      "note": "Role analyst_ro normally returns about 3947 rows per simulated day across the 14-day baseline, almost all inside 08:00-17:00."
+    },
+    "change_window": {
+      "ticket": "CHG-2026-0412",
+      "approved_by": "finance.director@eproc.test",
+      "starts_at": "2026-08-05T02:00:00Z",
+      "ends_at": "2026-08-05T06:00:00Z"
+    }
+  }
+}

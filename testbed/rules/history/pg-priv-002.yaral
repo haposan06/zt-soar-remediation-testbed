@@ -1,0 +1,27 @@
+rule pg_priv_002_role_altered_to_superuser {
+
+  meta:
+    author         = "thesis-lab"
+    description    = "Role altered to SUPERUSER or CREATEROLE: an ALTER ROLE statement conferring SUPERUSER, CREATEROLE, CREATEDB or BYPASSRLS, granting an account administrative control over the procurement database."
+    rule_id        = "PG-PRIV-002"
+    rule_name      = "Role altered to SUPERUSER or CREATEROLE"
+    scenario_class = "S2"
+    severity       = "Critical"
+    mitre_attack   = "T1078.004, T1098"
+    data_source    = "Teleport db.session.query (TELEPORT_DB_AUDIT)"
+
+  events:
+    $e.metadata.event_type   = "GENERIC_EVENT"
+    $e.metadata.product_name = "Teleport"
+    $e.metadata.vendor_name  = "Gravitational"
+    $e.metadata.log_type     = "TELEPORT_DB_AUDIT"
+
+    // db_query matches ^\s*alter role\b
+    re.regex($e.target.resource.attribute.labels["db_query"], `(?i)^\s*alter\s+role\b`)
+
+    // db_query confers a privileged role attribute
+    re.regex($e.target.resource.attribute.labels["db_query"], `(?i)\b(superuser|createrole|createdb|bypassrls)\b`)
+
+  condition:
+    $e
+}

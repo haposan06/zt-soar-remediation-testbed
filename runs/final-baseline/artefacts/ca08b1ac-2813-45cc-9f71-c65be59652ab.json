@@ -1,0 +1,111 @@
+{
+  "artefact_id": "ca08b1ac-2813-45cc-9f71-c65be59652ab",
+  "alert_id": "ALRT-0010",
+  "rule_id": "PG-TAMP-004",
+  "scenario_class": "S3",
+  "arm": "baseline",
+  "model_id": "template-playbook",
+  "model_version": "playbook-table-v1",
+  "prompt_version": "soar-remediation-v1.1.0",
+  "prompt_fingerprint": "bba831dba86cd027",
+  "temperature": null,
+  "top_p": null,
+  "max_tokens": 8192,
+  "json_mode": false,
+  "thinking_budget": 0,
+  "sample_index": 0,
+  "request_timestamp": "2026-09-12T15:06:11Z",
+  "latency_ms": 0.01,
+  "raw_response_text": "{\n  \"rationale\": \"Playbook PG-TAMP-004 matched on alert ALRT-0010. The principal dave.wijaya@eproc.test issued write statements against public.bids in session 50413ae5-70e8-4c1a-8a62-7e29b2517420. The standing playbook for integrity tampering snapshots the affected rows, removes the write grant from role proc_officer, and terminates the session's backends so that no further writes land before an investigator reviews the snapshot.\",\n  \"language\": \"sql\",\n  \"script\": \"-- Playbook PG-TAMP-004, alert ALRT-0010\\nBEGIN;\\nCREATE TABLE IF NOT EXISTS incident_snapshot_alrt_0010 AS\\n  SELECT * FROM public.bids;\\nREVOKE INSERT, UPDATE, DELETE ON public.bids FROM proc_officer;\\nCOMMIT;\\nSELECT pg_terminate_backend(pid) FROM pg_stat_activity\\n WHERE usename = 'proc_officer' AND client_addr = '10.20.3.21';\\n\",\n  \"rollback\": \"GRANT INSERT, UPDATE ON public.bids TO proc_officer;\\nDROP TABLE IF EXISTS incident_snapshot_alrt_0010;\\n\",\n  \"confidence\": \"medium\"\n}",
+  "parse_ok": true,
+  "parse_error": null,
+  "parse_repaired": false,
+  "strict_parse_error": null,
+  "rationale": "Playbook PG-TAMP-004 matched on alert ALRT-0010. The principal dave.wijaya@eproc.test issued write statements against public.bids in session 50413ae5-70e8-4c1a-8a62-7e29b2517420. The standing playbook for integrity tampering snapshots the affected rows, removes the write grant from role proc_officer, and terminates the session's backends so that no further writes land before an investigator reviews the snapshot.",
+  "language": "sql",
+  "script": "-- Playbook PG-TAMP-004, alert ALRT-0010\nBEGIN;\nCREATE TABLE IF NOT EXISTS incident_snapshot_alrt_0010 AS\n  SELECT * FROM public.bids;\nREVOKE INSERT, UPDATE, DELETE ON public.bids FROM proc_officer;\nCOMMIT;\nSELECT pg_terminate_backend(pid) FROM pg_stat_activity\n WHERE usename = 'proc_officer' AND client_addr = '10.20.3.21';\n",
+  "rollback": "GRANT INSERT, UPDATE ON public.bids TO proc_officer;\nDROP TABLE IF EXISTS incident_snapshot_alrt_0010;\n",
+  "confidence": "medium",
+  "extra_keys": [],
+  "missing_keys": [],
+  "attempts": 1,
+  "endpoint": "local",
+  "finish_reason": "TEMPLATE_COMPLETE",
+  "truncated": false,
+  "reasoning_mode": "default",
+  "reasoning_detail": "",
+  "harness_version": "generate-v1.1.0",
+  "alert_summary": {
+    "alert_id": "ALRT-0010",
+    "rule_id": "PG-TAMP-004",
+    "rule_name": "Mass update of sealed bid amounts",
+    "severity_hint": "critical",
+    "teleport_user": "dave.wijaya@eproc.test",
+    "db_role": "proc_officer",
+    "source_ip": "10.20.3.21",
+    "db_name": "procurement",
+    "session_id": "50413ae5-70e8-4c1a-8a62-7e29b2517420",
+    "first_seen": "2026-08-10T19:50:00Z",
+    "last_seen": "2026-08-10T19:59:00Z",
+    "event_count": 2,
+    "affected_objects": [
+      "public.bids"
+    ],
+    "attack_technique": [
+      "T1565.001"
+    ],
+    "evidence": [
+      {
+        "ts": "2026-08-10T19:50:00Z",
+        "statement": "SELECT bid_id, bid_amount, technical_score FROM bids ORDER BY bid_amount DESC LIMIT 10",
+        "rows": 10,
+        "duration_ms": 1.66,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-10T19:53:00Z",
+        "statement": "UPDATE bids SET bid_amount = bid_amount * 0.85 WHERE sealed_until > now()",
+        "rows": 1530,
+        "duration_ms": 28.48,
+        "matched_rules": [
+          "PG-TAMP-001",
+          "PG-TAMP-004"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-10T19:56:00Z",
+        "statement": "UPDATE bids SET technical_score = 99.00 WHERE vendor_id BETWEEN 1 AND 40",
+        "rows": 280,
+        "duration_ms": 3.87,
+        "matched_rules": [
+          "PG-TAMP-004"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-10T19:59:00Z",
+        "statement": "SELECT count(*) FROM bids WHERE technical_score = 99.00",
+        "rows": 1,
+        "duration_ms": 1.32,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      }
+    ],
+    "baseline_context": {
+      "typical_daily_rows": 2288,
+      "typical_hours_utc": "08:00-17:00",
+      "usual_source_ips": [
+        "10.20.3.21",
+        "10.20.3.22"
+      ],
+      "note": "Role proc_officer normally returns about 2288 rows per simulated day across the 14-day baseline, almost all inside 08:00-17:00."
+    },
+    "change_window": null
+  }
+}

@@ -1,0 +1,25 @@
+% !TEX root = ../main.tex
+%% generated from data/corpus/detection_hitrate.csv
+\begin{table}[t]
+\centering
+\caption{Rule hit rate over the injected attack steps, and alerting on benign activity}
+\label{tab:detection_hitrate}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lrrrrr@{}}
+\toprule
+\textbf{Class} & \textbf{Steps} & \textbf{Alerted} & \textbf{Missed} & \textbf{Hit rate} & \textbf{Benign} \\
+\midrule
+S1 Harvesting          & 20 & 10 & 10 & 50.0\% & 3 \\
+S2 Priv.\ escalation   & 20 & 11 &  9 & 55.0\% & 2 \\
+S3 Destructive         & 20 & 14 &  6 & 70.0\% & 1 \\
+\midrule
+Total                         & 60 & 35 & 25 & 58.3\% & 6 \\
+\bottomrule
+\end{tabular}
+
+\vspace{2pt}
+\scriptsize\raggedright Session-level detection was 12 of 12: every attack session raised at
+least one alert. All six benign alerts came from the B1 class, which was designed to
+trip a detector. None of the 588 B0 routine sessions raised an alert.
+\end{table}

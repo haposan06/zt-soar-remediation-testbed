@@ -1,0 +1,22 @@
+# private key material and per-run credentials (created by testbed/scripts/setup.sh)
+testbed/certs/*
+!testbed/certs/.gitkeep
+testbed/identities/*
+!testbed/identities/.gitkeep
+tsh-home/
+*.pem
+*.key
+*.crt
+.env
+
+# run-time outputs of the testbed and driver
+testbed/audit/
+testbed/out/
+audit/sessions/
+runs/logs/
+
+# housekeeping
+__pycache__/
+*.pyc
+.DS_Store
+*.zip

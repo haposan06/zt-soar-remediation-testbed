@@ -1,0 +1,101 @@
+{
+  "artefact_id": "4d02d916-c727-4b5f-8939-47c75faa962a",
+  "alert_id": "ALRT-0001",
+  "rule_id": "PG-EXF-001",
+  "scenario_class": "S1",
+  "arm": "claude",
+  "model_id": "claude-opus-4-6",
+  "model_version": "claude-opus-4-6",
+  "prompt_version": "soar-remediation-v1.1.0",
+  "prompt_fingerprint": "bba831dba86cd027",
+  "temperature": null,
+  "top_p": null,
+  "max_tokens": 16384,
+  "json_mode": false,
+  "thinking_budget": 0,
+  "sample_index": 1,
+  "request_timestamp": "2026-09-12T15:00:10Z",
+  "latency_ms": 72514.46,
+  "raw_response_text": "{\"rationale\":\"The evidence shows eve.contractor@eproc.test (analyst_ro) executed two unbounded SELECTs against public.vendors pulling tax_id and bank_account for all 900 rows, at 22:14-22:20 UTC from IP 10.20.7.88. This is well outside the principal's baseline hours (08:00-17:00) and from an IP not in the known set (10.20.4.61/62). Although analyst_ro does hold SELECT on vendors, the combination of off-hours timing, unknown source IP, external-contractor status, and bulk retrieval of sensitive financial columns warrants a precautionary lock on the Teleport principal while investigation proceeds. The session appears complete, but any lingering backend from that source IP is terminated. A frozen forensic copy of the session's audit entries is preserved in a quarantine table. Confidence is medium because the detector score is low (0.15) and the role technically permits the access, but the behavioural anomalies are pronounced.\",\"language\":\"bash\",\"script\":\"#!/usr/bin/env bash\\nset -euo pipefail\\n\\n# 1. Lock the Teleport user for 24 h to prevent re-access while the incident is investigated\\ntctl lock --user=eve.contractor@eproc.test --ttl=24h \\\\\\n  --message=\\\"ALRT-0001: Bulk read of vendors.tax_id and vendors.bank_account (1800 rows) from unusual IP 10.20.7.88 outside normal hours. Locked pending investigation.\\\"\\n\\n# 2. Terminate any active PostgreSQL backends from this source IP using analyst_ro\\npsql -h localhost -p 5432 -U dba -d procurement -c \\\"\\nSELECT pg_terminate_backend(pid)\\nFROM pg_stat_activity\\nWHERE usename = 'analyst_ro'\\n  AND client_addr = '10.20.7.88'::inet\\n  AND pid <> pg_backend_pid();\\n\\\"\\n\\n# 3. Freeze a forensic copy of audit_log entries for this session into a quarantine table\\npsql -h localhost -p 5432 -U dba -d procurement <<'SQL'\\nCREATE TABLE IF NOT EXISTS public.quarantine_audit_alrt0001 (\\n    LIKE public.audit_log INCLUDING DEFAULTS INCLUDING INDEXES\\n);\\n\\nINSERT INTO public.quarantine_audit_alrt0001\\nSELECT *\\nFROM   public.audit_log\\nWHERE  session_id = 'd61caa74-d686-4c64-8bbf-40dcf733ae1a'\\n  AND  NOT EXISTS (\\n         SELECT 1 FROM public.quarantine_audit_alrt0001 q\\n         WHERE  q.audit_id = audit_log.audit_id\\n       );\\nSQL\\n\",\"rollback\":\"#!/usr/bin/env bash\\nset -euo pipefail\\n\\n# Remove the Teleport lock targeting eve.contractor@eproc.test\\n# (It also auto-expires after 24 h)\\nLOCK_NAME=$(tctl get locks --format=json | \\\\\\n  python3 -c \\\"\\nimport sys, json\\nfor l in json.loads(sys.stdin.read()):\\n    t = l.get('spec',{}).get('target',{})\\n    if t.get('user','') == 'eve.contractor@eproc.test':\\n        print(l['metadata']['name']); break\\n\\\")\\nif [ -n \\\"$LOCK_NAME\\\" ]; then\\n  tctl rm \\\"lock/$LOCK_NAME\\\"\\nfi\\n\\n# Drop the forensic quarantine table\\npsql -h localhost -p 5432 -U dba -d procurement -c \\\\\\n  \\\"DROP TABLE IF EXISTS public.quarantine_audit_alrt0001;\\\"\\n\",\"confidence\":\"medium\"}",
+  "parse_ok": true,
+  "parse_error": null,
+  "parse_repaired": false,
+  "strict_parse_error": null,
+  "rationale": "The evidence shows eve.contractor@eproc.test (analyst_ro) executed two unbounded SELECTs against public.vendors pulling tax_id and bank_account for all 900 rows, at 22:14-22:20 UTC from IP 10.20.7.88. This is well outside the principal's baseline hours (08:00-17:00) and from an IP not in the known set (10.20.4.61/62). Although analyst_ro does hold SELECT on vendors, the combination of off-hours timing, unknown source IP, external-contractor status, and bulk retrieval of sensitive financial columns warrants a precautionary lock on the Teleport principal while investigation proceeds. The session appears complete, but any lingering backend from that source IP is terminated. A frozen forensic copy of the session's audit entries is preserved in a quarantine table. Confidence is medium because the detector score is low (0.15) and the role technically permits the access, but the behavioural anomalies are pronounced.",
+  "language": "bash",
+  "script": "#!/usr/bin/env bash\nset -euo pipefail\n\n# 1. Lock the Teleport user for 24 h to prevent re-access while the incident is investigated\ntctl lock --user=eve.contractor@eproc.test --ttl=24h \\\n  --message=\"ALRT-0001: Bulk read of vendors.tax_id and vendors.bank_account (1800 rows) from unusual IP 10.20.7.88 outside normal hours. Locked pending investigation.\"\n\n# 2. Terminate any active PostgreSQL backends from this source IP using analyst_ro\npsql -h localhost -p 5432 -U dba -d procurement -c \"\nSELECT pg_terminate_backend(pid)\nFROM pg_stat_activity\nWHERE usename = 'analyst_ro'\n  AND client_addr = '10.20.7.88'::inet\n  AND pid <> pg_backend_pid();\n\"\n\n# 3. Freeze a forensic copy of audit_log entries for this session into a quarantine table\npsql -h localhost -p 5432 -U dba -d procurement <<'SQL'\nCREATE TABLE IF NOT EXISTS public.quarantine_audit_alrt0001 (\n    LIKE public.audit_log INCLUDING DEFAULTS INCLUDING INDEXES\n);\n\nINSERT INTO public.quarantine_audit_alrt0001\nSELECT *\nFROM   public.audit_log\nWHERE  session_id = 'd61caa74-d686-4c64-8bbf-40dcf733ae1a'\n  AND  NOT EXISTS (\n         SELECT 1 FROM public.quarantine_audit_alrt0001 q\n         WHERE  q.audit_id = audit_log.audit_id\n       );\nSQL\n",
+  "rollback": "#!/usr/bin/env bash\nset -euo pipefail\n\n# Remove the Teleport lock targeting eve.contractor@eproc.test\n# (It also auto-expires after 24 h)\nLOCK_NAME=$(tctl get locks --format=json | \\\n  python3 -c \"\nimport sys, json\nfor l in json.loads(sys.stdin.read()):\n    t = l.get('spec',{}).get('target',{})\n    if t.get('user','') == 'eve.contractor@eproc.test':\n        print(l['metadata']['name']); break\n\")\nif [ -n \"$LOCK_NAME\" ]; then\n  tctl rm \"lock/$LOCK_NAME\"\nfi\n\n# Drop the forensic quarantine table\npsql -h localhost -p 5432 -U dba -d procurement -c \\\n  \"DROP TABLE IF EXISTS public.quarantine_audit_alrt0001;\"\n",
+  "confidence": "medium",
+  "extra_keys": [],
+  "missing_keys": [],
+  "attempts": 1,
+  "endpoint": "vertex-anthropic:<redacted-project>:global",
+  "finish_reason": "END_TURN",
+  "truncated": false,
+  "reasoning_mode": "high",
+  "reasoning_detail": "claude:thinking=adaptive,effort=high",
+  "harness_version": "generate-v1.1.0",
+  "alert_summary": {
+    "alert_id": "ALRT-0001",
+    "rule_id": "PG-EXF-001",
+    "rule_name": "Unbounded read of sensitive employee or vendor columns",
+    "severity_hint": "high",
+    "teleport_user": "eve.contractor@eproc.test",
+    "db_role": "analyst_ro",
+    "source_ip": "10.20.7.88",
+    "db_name": "procurement",
+    "session_id": "d61caa74-d686-4c64-8bbf-40dcf733ae1a",
+    "first_seen": "2026-08-04T22:14:00Z",
+    "last_seen": "2026-08-04T22:20:00Z",
+    "event_count": 2,
+    "affected_objects": [
+      "public.vendors"
+    ],
+    "attack_technique": [
+      "T1213"
+    ],
+    "evidence": [
+      {
+        "ts": "2026-08-04T22:14:00Z",
+        "statement": "SELECT current_user, session_user",
+        "rows": 1,
+        "duration_ms": 1.04,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-04T22:17:00Z",
+        "statement": "SELECT vendor_id, legal_name, tax_id, bank_account FROM vendors",
+        "rows": 900,
+        "duration_ms": 3.81,
+        "matched_rules": [
+          "PG-EXF-001"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-04T22:20:00Z",
+        "statement": "SELECT vendor_id, legal_name, tax_id, bank_account, owner_name FROM vendors ORDER BY vendor_id",
+        "rows": 900,
+        "duration_ms": 2.55,
+        "matched_rules": [
+          "PG-EXF-001"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      }
+    ],
+    "baseline_context": {
+      "typical_daily_rows": 3947,
+      "typical_hours_utc": "08:00-17:00",
+      "usual_source_ips": [
+        "10.20.4.61",
+        "10.20.4.62"
+      ],
+      "note": "Role analyst_ro normally returns about 3947 rows per simulated day across the 14-day baseline, almost all inside 08:00-17:00."
+    },
+    "change_window": null
+  }
+}

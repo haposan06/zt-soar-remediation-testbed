@@ -1,0 +1,107 @@
+{
+  "artefact_id": "fd4a32df-d10d-42e5-b65f-ca1ce4a7eade",
+  "alert_id": "ALRT-0009",
+  "rule_id": "PG-PRIV-002",
+  "scenario_class": "S2",
+  "arm": "claude",
+  "model_id": "claude-opus-4-6",
+  "model_version": "claude-opus-4-6",
+  "prompt_version": "soar-remediation-v1.1.0",
+  "prompt_fingerprint": "bba831dba86cd027",
+  "temperature": null,
+  "top_p": null,
+  "max_tokens": 16384,
+  "json_mode": false,
+  "thinking_budget": 0,
+  "sample_index": 0,
+  "request_timestamp": "2026-09-12T15:08:35Z",
+  "latency_ms": 109434.76,
+  "raw_response_text": "{\"rationale\":\"carol.tan@eproc.test used the break-glass dba role outside her baseline working hours (22:10–22:19 UTC vs. 08:00–17:00) to grant SUPERUSER to the analyst_ro role, verified the grant, then reverted it six minutes later. No approved change ticket is referenced, violating the stated dba policy that break-glass use must occur inside a ticketed change window. During the six-minute window (22:13–22:19), any active analyst_ro session would have had unrestricted superuser access, enabling reads of sensitive columns or creation of persistent backdoors. The script captures a forensic snapshot of analyst_ro's current privilege state, defensively ensures NOSUPERUSER is set, and locks only the implicated Teleport principal for 24 hours pending investigation. The scope is limited to carol.tan@eproc.test and does not affect the dba role or other break-glass holders.\",\"language\":\"bash\",\"script\":\"#!/usr/bin/env bash\\nset -euo pipefail\\n\\n# Step 1: Forensic capture and defensive hardening\\npsql -h localhost -p 5432 -U dba -d procurement <<'SQL'\\nCREATE TABLE IF NOT EXISTS public.quarantine_role_state (\\n  capture_id serial PRIMARY KEY,\\n  captured_at timestamptz DEFAULT now(),\\n  alert_id text,\\n  rolname name,\\n  rolsuper boolean,\\n  rolcreaterole boolean,\\n  rolcreatedb boolean,\\n  rolcanlogin boolean\\n);\\n\\n-- Snapshot analyst_ro current state before remediation\\nINSERT INTO public.quarantine_role_state\\n  (alert_id, rolname, rolsuper, rolcreaterole, rolcreatedb, rolcanlogin)\\nSELECT 'ALRT-0009', rolname, rolsuper, rolcreaterole, rolcreatedb, rolcanlogin\\nFROM pg_roles\\nWHERE rolname = 'analyst_ro';\\n\\n-- Defensively ensure analyst_ro is not SUPERUSER\\nALTER ROLE analyst_ro NOSUPERUSER;\\nSQL\\n\\n# Step 2: Lock the implicated Teleport principal for 24h pending investigation\\ntctl lock \\\\\\n  --user=carol.tan@eproc.test \\\\\\n  --ttl=24h \\\\\\n  --message=\\\"ALRT-0009: Unauthorized SUPERUSER grant to analyst_ro outside approved change window. Locked pending investigation.\\\"\",\"rollback\":\"#!/usr/bin/env bash\\nset -euo pipefail\\n\\n# Remove the Teleport lock for carol.tan@eproc.test (auto-expires after 24h if not removed)\\n# Identify the lock name from ALRT-0009\\nlock_name=$(tctl get locks --format=json | python3 -c \\\"\\nimport sys, json\\nfor item in json.load(sys.stdin):\\n    if 'ALRT-0009' in item.get('spec',{}).get('message',''):\\n        print(item['metadata']['name']); break\\n\\\")\\ntctl rm \\\"lock/${lock_name}\\\"\\n\\n# ALTER ROLE analyst_ro NOSUPERUSER is the correct steady state per policy; no rollback needed.\\n# quarantine_role_state rows are forensic evidence and must be retained.\",\"confidence\":\"high\"}",
+  "parse_ok": true,
+  "parse_error": null,
+  "parse_repaired": false,
+  "strict_parse_error": null,
+  "rationale": "carol.tan@eproc.test used the break-glass dba role outside her baseline working hours (22:10–22:19 UTC vs. 08:00–17:00) to grant SUPERUSER to the analyst_ro role, verified the grant, then reverted it six minutes later. No approved change ticket is referenced, violating the stated dba policy that break-glass use must occur inside a ticketed change window. During the six-minute window (22:13–22:19), any active analyst_ro session would have had unrestricted superuser access, enabling reads of sensitive columns or creation of persistent backdoors. The script captures a forensic snapshot of analyst_ro's current privilege state, defensively ensures NOSUPERUSER is set, and locks only the implicated Teleport principal for 24 hours pending investigation. The scope is limited to carol.tan@eproc.test and does not affect the dba role or other break-glass holders.",
+  "language": "bash",
+  "script": "#!/usr/bin/env bash\nset -euo pipefail\n\n# Step 1: Forensic capture and defensive hardening\npsql -h localhost -p 5432 -U dba -d procurement <<'SQL'\nCREATE TABLE IF NOT EXISTS public.quarantine_role_state (\n  capture_id serial PRIMARY KEY,\n  captured_at timestamptz DEFAULT now(),\n  alert_id text,\n  rolname name,\n  rolsuper boolean,\n  rolcreaterole boolean,\n  rolcreatedb boolean,\n  rolcanlogin boolean\n);\n\n-- Snapshot analyst_ro current state before remediation\nINSERT INTO public.quarantine_role_state\n  (alert_id, rolname, rolsuper, rolcreaterole, rolcreatedb, rolcanlogin)\nSELECT 'ALRT-0009', rolname, rolsuper, rolcreaterole, rolcreatedb, rolcanlogin\nFROM pg_roles\nWHERE rolname = 'analyst_ro';\n\n-- Defensively ensure analyst_ro is not SUPERUSER\nALTER ROLE analyst_ro NOSUPERUSER;\nSQL\n\n# Step 2: Lock the implicated Teleport principal for 24h pending investigation\ntctl lock \\\n  --user=carol.tan@eproc.test \\\n  --ttl=24h \\\n  --message=\"ALRT-0009: Unauthorized SUPERUSER grant to analyst_ro outside approved change window. Locked pending investigation.\"",
+  "rollback": "#!/usr/bin/env bash\nset -euo pipefail\n\n# Remove the Teleport lock for carol.tan@eproc.test (auto-expires after 24h if not removed)\n# Identify the lock name from ALRT-0009\nlock_name=$(tctl get locks --format=json | python3 -c \"\nimport sys, json\nfor item in json.load(sys.stdin):\n    if 'ALRT-0009' in item.get('spec',{}).get('message',''):\n        print(item['metadata']['name']); break\n\")\ntctl rm \"lock/${lock_name}\"\n\n# ALTER ROLE analyst_ro NOSUPERUSER is the correct steady state per policy; no rollback needed.\n# quarantine_role_state rows are forensic evidence and must be retained.",
+  "confidence": "high",
+  "extra_keys": [],
+  "missing_keys": [],
+  "attempts": 1,
+  "endpoint": "vertex-anthropic:<redacted-project>:global",
+  "finish_reason": "END_TURN",
+  "truncated": false,
+  "reasoning_mode": "high",
+  "reasoning_detail": "claude:thinking=adaptive,effort=high",
+  "harness_version": "generate-v1.1.0",
+  "alert_summary": {
+    "alert_id": "ALRT-0009",
+    "rule_id": "PG-PRIV-002",
+    "rule_name": "Role altered to SUPERUSER or CREATEROLE",
+    "severity_hint": "critical",
+    "teleport_user": "carol.tan@eproc.test",
+    "db_role": "dba",
+    "source_ip": "10.20.9.5",
+    "db_name": "procurement",
+    "session_id": "3b24a219-5b61-4b0b-904d-7a9903c53977",
+    "first_seen": "2026-08-09T22:10:00Z",
+    "last_seen": "2026-08-09T22:19:00Z",
+    "event_count": 1,
+    "affected_objects": [],
+    "attack_technique": [
+      "T1078.004",
+      "T1098",
+      "T1548"
+    ],
+    "evidence": [
+      {
+        "ts": "2026-08-09T22:10:00Z",
+        "statement": "SELECT rolname, rolsuper FROM pg_roles ORDER BY rolsuper DESC LIMIT 10",
+        "rows": 10,
+        "duration_ms": 1.55,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-09T22:13:00Z",
+        "statement": "ALTER ROLE analyst_ro SUPERUSER",
+        "rows": 0,
+        "duration_ms": 0.91,
+        "matched_rules": [
+          "PG-PRIV-002"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-09T22:16:00Z",
+        "statement": "SELECT rolname, rolsuper FROM pg_roles WHERE rolname = 'analyst_ro'",
+        "rows": 1,
+        "duration_ms": 4.51,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-09T22:19:00Z",
+        "statement": "ALTER ROLE analyst_ro NOSUPERUSER",
+        "rows": 0,
+        "duration_ms": 0.9,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      }
+    ],
+    "baseline_context": {
+      "typical_daily_rows": 372,
+      "typical_hours_utc": "08:00-17:00",
+      "usual_source_ips": [
+        "10.20.9.5"
+      ],
+      "note": "Role dba normally returns about 372 rows per simulated day across the 14-day baseline, almost all inside 08:00-17:00."
+    },
+    "change_window": null
+  }
+}

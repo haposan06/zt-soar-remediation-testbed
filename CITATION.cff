@@ -1,0 +1,50 @@
+cff-version: 1.2.0
+message: "If you use this testbed, corpus or the rated artefacts, please cite both the software release and the paper."
+type: software
+title: "Zero-Trust SOAR Remediation Testbed: synthetic Teleport database-access corpus, LLM remediation artefacts and blind ratings"
+version: 1.0.0
+date-released: 2026-09-14
+authors:
+  - given-names: Johannes Haposan
+    family-names: Napitupulu
+    affiliation: "Monash University"
+  - given-names: Muhamad Erza
+    family-names: Aminanto
+    affiliation: "Monash University"
+url: "https://github.com/haposan06/zt-soar-remediation-testbed"
+repository-code: "https://github.com/haposan06/zt-soar-remediation-testbed"
+license: MIT
+abstract: >-
+  A fully local zero-trust database-access testbed (Teleport 17 in front of
+  PostgreSQL 16) that emits genuine Teleport audit logs from scripted benign
+  and malicious sessions, eleven YARA-L 2.0 detection rules and their Python
+  evaluator, the resulting 18 alerts, a generation harness that asks Gemini
+  3.1 Pro, Claude Opus 4.6 and a template baseline for remediation scripts,
+  the 126 resulting artefacts, a blind two-rater coding of every artefact and
+  the analysis code that reproduces the reported statistics. All data is
+  synthetic.
+keywords:
+  - zero trust
+  - SOAR
+  - security orchestration
+  - generative AI
+  - large language models
+  - incident response
+  - remediation
+  - Teleport
+  - PostgreSQL
+  - YARA-L
+  - audit logs
+  - testbed
+  - reproducibility
+preferred-citation:
+  type: article
+  title: "Enhancing Cloud-Native SOAR with Generative AI"
+  authors:
+    - given-names: Johannes Haposan
+      family-names: Napitupulu
+    - given-names: Muhamad Erza
+      family-names: Aminanto
+  year: 2026
+  status: in-preparation
+  notes: "Under review. Placeholder; replace with the venue, DOI and page range once published."

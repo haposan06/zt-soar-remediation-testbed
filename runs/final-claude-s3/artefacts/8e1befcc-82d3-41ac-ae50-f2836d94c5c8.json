@@ -1,0 +1,140 @@
+{
+  "artefact_id": "8e1befcc-82d3-41ac-ae50-f2836d94c5c8",
+  "alert_id": "ALRT-0014",
+  "rule_id": "PG-TAMP-003",
+  "scenario_class": "S3",
+  "arm": "claude",
+  "model_id": "claude-opus-4-6",
+  "model_version": "claude-opus-4-6",
+  "prompt_version": "soar-remediation-v1.1.0",
+  "prompt_fingerprint": "bba831dba86cd027",
+  "temperature": null,
+  "top_p": null,
+  "max_tokens": 16384,
+  "json_mode": false,
+  "thinking_budget": 0,
+  "sample_index": 2,
+  "request_timestamp": "2026-09-12T15:19:44Z",
+  "latency_ms": 103939.94,
+  "raw_response_text": "{\"rationale\":\"The evidence shows carol.tan@eproc.test using the break-glass dba role outside normal hours (03:20–03:40 UTC vs. baseline 08:00–17:00) to execute obfuscated SQL: chr() string construction (T1027), mixed-case keyword evasion, a mass UPDATE setting 600 bids to 'withdrawn', an attempted DELETE from audit_log (evidence tampering, blocked or matched 0 rows), and a DROP TABLE. The activity volume (600 rows modified in one statement) far exceeds the 372-row daily baseline, and the obfuscation pattern is inconsistent with any legitimate administrative task. The low detector score (0.05) does not diminish the severity of the observed statements. Remediation locks the specific Teleport principal, terminates active database sessions matching the dba role from the alert source address, and creates a forensic snapshot of the tampered bids for investigation. Bid restoration to original status values will require a backup, as original values are not available in this alert.\",\"language\":\"bash\",\"script\":\"#!/usr/bin/env bash\\nset -euo pipefail\\n\\n# 1. Lock the Teleport principal to block new and in-flight sessions\\ntctl lock --user=carol.tan@eproc.test \\\\\\n  --ttl=24h \\\\\\n  --message=\\\"ALRT-0014: Obfuscated SQL, mass bid tampering (600 rows), attempted audit_log deletion outside change window\\\"\\n\\n# 2. Terminate any active database sessions from this principal\\npsql -h localhost -p 5432 -U dba -d procurement -c \\\\\\n\\\"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE usename = 'dba' AND client_addr = '10.20.9.5'::inet AND pid <> pg_backend_pid();\\\"\\n\\n# 3. Forensic snapshot of tampered bids (preserves post-tamper state for investigation)\\npsql -h localhost -p 5432 -U dba -d procurement <<'EOSQL'\\nCREATE TABLE public.quarantine_alrt_0014_bids AS\\n  SELECT *, now() AS quarantined_at, 'ALRT-0014'::text AS alert_ref\\n  FROM public.bids\\n  WHERE bid_id BETWEEN 1 AND 600;\\n\\nCOMMENT ON TABLE public.quarantine_alrt_0014_bids IS\\n  'Forensic snapshot: bids (1-600) mass-updated to withdrawn by carol.tan@eproc.test, session 2363c303-ea51-4d8b-9f60-12329613f41e, 2026-08-13T03:28Z. Original statuses must be recovered from backup.';\\nEOSQL\",\"rollback\":\"#!/usr/bin/env bash\\nset -euo pipefail\\n\\n# 1. Remove the Teleport lock on carol.tan@eproc.test\\n#    List locks to find the auto-generated lock name, then remove it:\\ntctl get locks\\n# Identify the lock targeting user carol.tan@eproc.test, then run:\\n# tctl rm lock/<lock-name>\\n\\n# 2. Drop forensic snapshot (only after investigation concludes and data is exported)\\npsql -h localhost -p 5432 -U dba -d procurement -c \\\"DROP TABLE IF EXISTS public.quarantine_alrt_0014_bids;\\\"\\n\\n# NOTE: Session termination is not reversible but the user can reconnect once unlocked.\\n# NOTE: Restoring bids.status to pre-tamper values requires point-in-time recovery or backup.\",\"confidence\":\"high\"}",
+  "parse_ok": true,
+  "parse_error": null,
+  "parse_repaired": false,
+  "strict_parse_error": null,
+  "rationale": "The evidence shows carol.tan@eproc.test using the break-glass dba role outside normal hours (03:20–03:40 UTC vs. baseline 08:00–17:00) to execute obfuscated SQL: chr() string construction (T1027), mixed-case keyword evasion, a mass UPDATE setting 600 bids to 'withdrawn', an attempted DELETE from audit_log (evidence tampering, blocked or matched 0 rows), and a DROP TABLE. The activity volume (600 rows modified in one statement) far exceeds the 372-row daily baseline, and the obfuscation pattern is inconsistent with any legitimate administrative task. The low detector score (0.05) does not diminish the severity of the observed statements. Remediation locks the specific Teleport principal, terminates active database sessions matching the dba role from the alert source address, and creates a forensic snapshot of the tampered bids for investigation. Bid restoration to original status values will require a backup, as original values are not available in this alert.",
+  "language": "bash",
+  "script": "#!/usr/bin/env bash\nset -euo pipefail\n\n# 1. Lock the Teleport principal to block new and in-flight sessions\ntctl lock --user=carol.tan@eproc.test \\\n  --ttl=24h \\\n  --message=\"ALRT-0014: Obfuscated SQL, mass bid tampering (600 rows), attempted audit_log deletion outside change window\"\n\n# 2. Terminate any active database sessions from this principal\npsql -h localhost -p 5432 -U dba -d procurement -c \\\n\"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE usename = 'dba' AND client_addr = '10.20.9.5'::inet AND pid <> pg_backend_pid();\"\n\n# 3. Forensic snapshot of tampered bids (preserves post-tamper state for investigation)\npsql -h localhost -p 5432 -U dba -d procurement <<'EOSQL'\nCREATE TABLE public.quarantine_alrt_0014_bids AS\n  SELECT *, now() AS quarantined_at, 'ALRT-0014'::text AS alert_ref\n  FROM public.bids\n  WHERE bid_id BETWEEN 1 AND 600;\n\nCOMMENT ON TABLE public.quarantine_alrt_0014_bids IS\n  'Forensic snapshot: bids (1-600) mass-updated to withdrawn by carol.tan@eproc.test, session 2363c303-ea51-4d8b-9f60-12329613f41e, 2026-08-13T03:28Z. Original statuses must be recovered from backup.';\nEOSQL",
+  "rollback": "#!/usr/bin/env bash\nset -euo pipefail\n\n# 1. Remove the Teleport lock on carol.tan@eproc.test\n#    List locks to find the auto-generated lock name, then remove it:\ntctl get locks\n# Identify the lock targeting user carol.tan@eproc.test, then run:\n# tctl rm lock/<lock-name>\n\n# 2. Drop forensic snapshot (only after investigation concludes and data is exported)\npsql -h localhost -p 5432 -U dba -d procurement -c \"DROP TABLE IF EXISTS public.quarantine_alrt_0014_bids;\"\n\n# NOTE: Session termination is not reversible but the user can reconnect once unlocked.\n# NOTE: Restoring bids.status to pre-tamper values requires point-in-time recovery or backup.",
+  "confidence": "high",
+  "extra_keys": [],
+  "missing_keys": [],
+  "attempts": 1,
+  "endpoint": "vertex-anthropic:<redacted-project>:global",
+  "finish_reason": "END_TURN",
+  "truncated": false,
+  "reasoning_mode": "high",
+  "reasoning_detail": "claude:thinking=adaptive,effort=high",
+  "harness_version": "generate-v1.1.0",
+  "alert_summary": {
+    "alert_id": "ALRT-0014",
+    "rule_id": "PG-TAMP-003",
+    "rule_name": "Obfuscated SQL construction",
+    "severity_hint": "high",
+    "teleport_user": "carol.tan@eproc.test",
+    "db_role": "dba",
+    "source_ip": "10.20.9.5",
+    "db_name": "procurement",
+    "session_id": "2363c303-ea51-4d8b-9f60-12329613f41e",
+    "first_seen": "2026-08-13T03:20:00Z",
+    "last_seen": "2026-08-13T03:40:00Z",
+    "event_count": 6,
+    "affected_objects": [
+      "public.audit_log",
+      "public.bids",
+      "public.payments"
+    ],
+    "attack_technique": [
+      "T1027"
+    ],
+    "evidence": [
+      {
+        "ts": "2026-08-13T03:20:00Z",
+        "statement": "SELECT chr(112)||chr(103)||chr(95)||chr(100)||chr(98) AS tag",
+        "rows": 1,
+        "duration_ms": 3.45,
+        "matched_rules": [
+          "PG-TAMP-003"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-13T03:24:00Z",
+        "statement": "sElEcT count(*) FROM payments",
+        "rows": 1,
+        "duration_ms": 2.42,
+        "matched_rules": [
+          "PG-TAMP-003"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-13T03:28:00Z",
+        "statement": "uPdAtE bids SET status = 'withdrawn' WHERE bid_id BETWEEN 1 AND 600",
+        "rows": 600,
+        "duration_ms": 7.28,
+        "matched_rules": [
+          "PG-TAMP-001",
+          "PG-TAMP-003"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-13T03:32:00Z",
+        "statement": "DEL/**/ETE FROM audit_log WHERE audit_id < 5",
+        "rows": 0,
+        "duration_ms": 1.22,
+        "matched_rules": [
+          "PG-TAMP-003"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": false,
+        "postgres_error": "syntax error at or near \"DEL\""
+      },
+      {
+        "ts": "2026-08-13T03:36:00Z",
+        "statement": "SELECT chr(100)||chr(114)||chr(111)||chr(112) AS tag",
+        "rows": 1,
+        "duration_ms": 0.77,
+        "matched_rules": [
+          "PG-TAMP-003"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-13T03:40:00Z",
+        "statement": "dRoP TABLE IF EXISTS public.bids_scratch",
+        "rows": 0,
+        "duration_ms": 1.04,
+        "matched_rules": [
+          "PG-TAMP-002",
+          "PG-TAMP-003"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      }
+    ],
+    "baseline_context": {
+      "typical_daily_rows": 372,
+      "typical_hours_utc": "08:00-17:00",
+      "usual_source_ips": [
+        "10.20.9.5"
+      ],
+      "note": "Role dba normally returns about 372 rows per simulated day across the 14-day baseline, almost all inside 08:00-17:00."
+    },
+    "change_window": null
+  }
+}

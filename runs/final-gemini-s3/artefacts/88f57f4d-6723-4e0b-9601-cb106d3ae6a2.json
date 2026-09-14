@@ -1,0 +1,98 @@
+{
+  "artefact_id": "88f57f4d-6723-4e0b-9601-cb106d3ae6a2",
+  "alert_id": "ALRT-0008",
+  "rule_id": "PG-ANTIF-001",
+  "scenario_class": "S3",
+  "arm": "gemini",
+  "model_id": "gemini-3.1-pro-preview",
+  "model_version": "gemini-3.1-pro-preview",
+  "prompt_version": "soar-remediation-v1.1.0",
+  "prompt_fingerprint": "bba831dba86cd027",
+  "temperature": null,
+  "top_p": null,
+  "max_tokens": 16384,
+  "json_mode": false,
+  "thinking_budget": 0,
+  "sample_index": 2,
+  "request_timestamp": "2026-09-12T15:07:14Z",
+  "latency_ms": 25624.28,
+  "raw_response_text": "{\n  \"rationale\": \"The evidence explicitly shows the principal carol.tan@eproc.test using the dba role to execute a 'DELETE FROM audit_log' statement, destroying 3852 rows. This violates the strict append-only policy for the audit log and represents deliberate evidence destruction (T1070) occurring outside of typical active hours. I am locking the user at the Teleport proxy level to immediately sever their access and prevent further tampering. This appropriately scopes the remediation to the implicated principal without disrupting other database administrators.\",\n  \"language\": \"tsh\",\n  \"script\": \"tctl lock --user=carol.tan@eproc.test --ttl=24h --message=\\\"ALRT-0008: Critical evidence destruction in audit_log\\\"\",\n  \"rollback\": \"IRREVERSIBLE: The lock creation generates a dynamic UUID for the lock name that cannot be statically determined. An operator must manually identify the lock using 'tctl get locks' and remove it using 'tctl rm lock/<lock-name>'.\",\n  \"confidence\": \"high\"\n}",
+  "parse_ok": true,
+  "parse_error": null,
+  "parse_repaired": false,
+  "strict_parse_error": null,
+  "rationale": "The evidence explicitly shows the principal carol.tan@eproc.test using the dba role to execute a 'DELETE FROM audit_log' statement, destroying 3852 rows. This violates the strict append-only policy for the audit log and represents deliberate evidence destruction (T1070) occurring outside of typical active hours. I am locking the user at the Teleport proxy level to immediately sever their access and prevent further tampering. This appropriately scopes the remediation to the implicated principal without disrupting other database administrators.",
+  "language": "tsh",
+  "script": "tctl lock --user=carol.tan@eproc.test --ttl=24h --message=\"ALRT-0008: Critical evidence destruction in audit_log\"",
+  "rollback": "IRREVERSIBLE: The lock creation generates a dynamic UUID for the lock name that cannot be statically determined. An operator must manually identify the lock using 'tctl get locks' and remove it using 'tctl rm lock/<lock-name>'.",
+  "confidence": "high",
+  "extra_keys": [],
+  "missing_keys": [],
+  "attempts": 1,
+  "endpoint": "vertex:<redacted-project>:global",
+  "finish_reason": "STOP",
+  "truncated": false,
+  "reasoning_mode": "high",
+  "reasoning_detail": "gemini:thinking_level=HIGH",
+  "harness_version": "generate-v1.1.0",
+  "alert_summary": {
+    "alert_id": "ALRT-0008",
+    "rule_id": "PG-ANTIF-001",
+    "rule_name": "Audit log tampering",
+    "severity_hint": "critical",
+    "teleport_user": "carol.tan@eproc.test",
+    "db_role": "dba",
+    "source_ip": "10.20.9.5",
+    "db_name": "procurement",
+    "session_id": "1237b750-3f48-42e8-a2eb-d2d9ddcc54fa",
+    "first_seen": "2026-08-08T21:30:00Z",
+    "last_seen": "2026-08-08T21:34:00Z",
+    "event_count": 1,
+    "affected_objects": [
+      "public.audit_log"
+    ],
+    "attack_technique": [
+      "T1070"
+    ],
+    "evidence": [
+      {
+        "ts": "2026-08-08T21:30:00Z",
+        "statement": "SELECT count(*) FROM audit_log",
+        "rows": 1,
+        "duration_ms": 9.99,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-08T21:32:00Z",
+        "statement": "DELETE FROM audit_log",
+        "rows": 3852,
+        "duration_ms": 14.23,
+        "matched_rules": [
+          "PG-ANTIF-001"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-08T21:34:00Z",
+        "statement": "SELECT count(*) FROM audit_log",
+        "rows": 1,
+        "duration_ms": 1.44,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      }
+    ],
+    "baseline_context": {
+      "typical_daily_rows": 372,
+      "typical_hours_utc": "08:00-17:00",
+      "usual_source_ips": [
+        "10.20.9.5"
+      ],
+      "note": "Role dba normally returns about 372 rows per simulated day across the 14-day baseline, almost all inside 08:00-17:00."
+    },
+    "change_window": null
+  }
+}

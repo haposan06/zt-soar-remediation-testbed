@@ -1,0 +1,27 @@
+rule pg_exf_002_bulk_export_copy_to_stdout {
+
+  meta:
+    author         = "thesis-lab"
+    description    = "Bulk export via COPY TO STDOUT: a COPY ... TO STDOUT statement whose text references one of the sensitive procurement tables, streaming table contents out of the database session."
+    rule_id        = "PG-EXF-002"
+    rule_name      = "Bulk export via COPY TO STDOUT"
+    scenario_class = "S1"
+    severity       = "High"
+    mitre_attack   = "T1213, T1005"
+    data_source    = "Teleport db.session.query (TELEPORT_DB_AUDIT)"
+
+  events:
+    $e.metadata.event_type   = "GENERIC_EVENT"
+    $e.metadata.product_name = "Teleport"
+    $e.metadata.vendor_name  = "Gravitational"
+    $e.metadata.log_type     = "TELEPORT_DB_AUDIT"
+
+    // db_query matches COPY ... TO STDOUT
+    re.regex($e.target.resource.attribute.labels["db_query"], `(?i)\bcopy\b.*\bto\s+stdout\b`)
+
+    // db_query matches the sensitive-table regex
+    re.regex($e.target.resource.attribute.labels["db_query"], `(?i)(employees|vendors|payments|bids)`)
+
+  condition:
+    $e
+}

@@ -1,0 +1,151 @@
+{
+  "artefact_id": "be717349-7eef-449b-8157-89393d96eec1",
+  "alert_id": "ALRT-0002",
+  "rule_id": "PG-EXF-003",
+  "scenario_class": "B1",
+  "arm": "baseline",
+  "model_id": "template-playbook",
+  "model_version": "playbook-table-v1",
+  "prompt_version": "soar-remediation-v1.1.0",
+  "prompt_fingerprint": "bba831dba86cd027",
+  "temperature": null,
+  "top_p": null,
+  "max_tokens": 8192,
+  "json_mode": false,
+  "thinking_budget": 0,
+  "sample_index": 0,
+  "request_timestamp": "2026-09-12T15:06:11Z",
+  "latency_ms": 0.02,
+  "raw_response_text": "{\n  \"rationale\": \"Playbook PG-EXF-003 matched on alert ALRT-0002. The principal rina.hartono@eproc.test operating as database role analyst_ro read 6 statements against public.payments between 2026-08-05T03:00:00Z and 2026-08-05T03:24:00Z. The standing playbook for bulk sensitive reads revokes the read grant that was used, terminates the live backend, and preserves the statement sample for the investigator.\",\n  \"language\": \"sql\",\n  \"script\": \"-- Playbook PG-EXF-001, alert ALRT-0002\\nBEGIN;\\nCREATE TABLE IF NOT EXISTS incident_hold (\\n    alert_id text, session_id text, captured_at timestamptz DEFAULT now(), detail jsonb);\\nINSERT INTO incident_hold (alert_id, session_id, detail)\\nVALUES ('ALRT-0002', '07598bbc-4316-4dfe-84d2-bacc071b1a9d',\\n        jsonb_build_object('teleport_user', 'rina.hartono@eproc.test',\\n                           'db_role', 'analyst_ro',\\n                           'object', 'public.payments'));\\nREVOKE SELECT ON public.payments FROM analyst_ro;\\nCOMMIT;\\nSELECT pg_terminate_backend(pid) FROM pg_stat_activity\\n WHERE usename = 'analyst_ro' AND client_addr = '10.20.4.61';\\n\",\n  \"rollback\": \"GRANT SELECT ON public.payments TO analyst_ro;\\nDELETE FROM incident_hold WHERE alert_id = 'ALRT-0002';\\n\",\n  \"confidence\": \"medium\"\n}",
+  "parse_ok": true,
+  "parse_error": null,
+  "parse_repaired": false,
+  "strict_parse_error": null,
+  "rationale": "Playbook PG-EXF-003 matched on alert ALRT-0002. The principal rina.hartono@eproc.test operating as database role analyst_ro read 6 statements against public.payments between 2026-08-05T03:00:00Z and 2026-08-05T03:24:00Z. The standing playbook for bulk sensitive reads revokes the read grant that was used, terminates the live backend, and preserves the statement sample for the investigator.",
+  "language": "sql",
+  "script": "-- Playbook PG-EXF-001, alert ALRT-0002\nBEGIN;\nCREATE TABLE IF NOT EXISTS incident_hold (\n    alert_id text, session_id text, captured_at timestamptz DEFAULT now(), detail jsonb);\nINSERT INTO incident_hold (alert_id, session_id, detail)\nVALUES ('ALRT-0002', '07598bbc-4316-4dfe-84d2-bacc071b1a9d',\n        jsonb_build_object('teleport_user', 'rina.hartono@eproc.test',\n                           'db_role', 'analyst_ro',\n                           'object', 'public.payments'));\nREVOKE SELECT ON public.payments FROM analyst_ro;\nCOMMIT;\nSELECT pg_terminate_backend(pid) FROM pg_stat_activity\n WHERE usename = 'analyst_ro' AND client_addr = '10.20.4.61';\n",
+  "rollback": "GRANT SELECT ON public.payments TO analyst_ro;\nDELETE FROM incident_hold WHERE alert_id = 'ALRT-0002';\n",
+  "confidence": "medium",
+  "extra_keys": [],
+  "missing_keys": [],
+  "attempts": 1,
+  "endpoint": "local",
+  "finish_reason": "TEMPLATE_COMPLETE",
+  "truncated": false,
+  "reasoning_mode": "default",
+  "reasoning_detail": "",
+  "harness_version": "generate-v1.1.0",
+  "alert_summary": {
+    "alert_id": "ALRT-0002",
+    "rule_id": "PG-EXF-003",
+    "rule_name": "Sustained out-of-hours paginated bulk read",
+    "severity_hint": "high",
+    "teleport_user": "rina.hartono@eproc.test",
+    "db_role": "analyst_ro",
+    "source_ip": "10.20.4.61",
+    "db_name": "procurement",
+    "session_id": "07598bbc-4316-4dfe-84d2-bacc071b1a9d",
+    "first_seen": "2026-08-05T03:00:00Z",
+    "last_seen": "2026-08-05T03:24:00Z",
+    "event_count": 6,
+    "affected_objects": [
+      "public.payments"
+    ],
+    "attack_technique": [
+      "T1213",
+      "T1030"
+    ],
+    "evidence": [
+      {
+        "ts": "2026-08-05T03:00:00Z",
+        "statement": "SELECT count(*) FROM payments",
+        "rows": 1,
+        "duration_ms": 2.17,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-05T03:04:00Z",
+        "statement": "SELECT payment_id, contract_id, invoice_no, amount, paid_at, status FROM payments ORDER BY payment_id LIMIT 2000 OFFSET 0",
+        "rows": 2000,
+        "duration_ms": 5.39,
+        "matched_rules": [
+          "PG-EXF-003"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-05T03:08:00Z",
+        "statement": "SELECT payment_id, contract_id, invoice_no, amount, paid_at, status FROM payments ORDER BY payment_id LIMIT 2000 OFFSET 2000",
+        "rows": 2000,
+        "duration_ms": 4.08,
+        "matched_rules": [
+          "PG-EXF-003"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-05T03:12:00Z",
+        "statement": "SELECT payment_id, contract_id, invoice_no, amount, paid_at, status FROM payments ORDER BY payment_id LIMIT 2000 OFFSET 4000",
+        "rows": 2000,
+        "duration_ms": 3.99,
+        "matched_rules": [
+          "PG-EXF-003"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-05T03:16:00Z",
+        "statement": "SELECT payment_id, contract_id, invoice_no, amount, paid_at, status FROM payments ORDER BY payment_id LIMIT 2000 OFFSET 6000",
+        "rows": 2000,
+        "duration_ms": 4.27,
+        "matched_rules": [
+          "PG-EXF-003"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-05T03:20:00Z",
+        "statement": "SELECT payment_id, contract_id, invoice_no, amount, paid_at, status FROM payments ORDER BY payment_id LIMIT 2000 OFFSET 8000",
+        "rows": 2000,
+        "duration_ms": 3.9,
+        "matched_rules": [
+          "PG-EXF-003"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-05T03:24:00Z",
+        "statement": "SELECT payment_id, contract_id, invoice_no, amount, paid_at, status FROM payments ORDER BY payment_id LIMIT 2000 OFFSET 10000",
+        "rows": 2000,
+        "duration_ms": 10.49,
+        "matched_rules": [
+          "PG-EXF-003"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      }
+    ],
+    "baseline_context": {
+      "typical_daily_rows": 3947,
+      "typical_hours_utc": "08:00-17:00",
+      "usual_source_ips": [
+        "10.20.4.61",
+        "10.20.4.62"
+      ],
+      "note": "Role analyst_ro normally returns about 3947 rows per simulated day across the 14-day baseline, almost all inside 08:00-17:00."
+    },
+    "change_window": {
+      "ticket": "CHG-2026-0412",
+      "approved_by": "finance.director@eproc.test",
+      "starts_at": "2026-08-05T02:00:00Z",
+      "ends_at": "2026-08-05T06:00:00Z"
+    }
+  }
+}

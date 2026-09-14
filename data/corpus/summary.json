@@ -1,0 +1,153 @@
+{
+  "generated_from": "Teleport db audit log (dir backend, JSON)",
+  "cluster": "thesis-lab",
+  "database": "procurement",
+  "simulated_window": {
+    "days": 14,
+    "start": "2026-08-03",
+    "end": "2026-08-16",
+    "working_hours_local": "08:00-17:00 with evening and weekend tail"
+  },
+  "scenario_classes": {
+    "B0": "routine baseline activity",
+    "B1": "benign but alerting activity (false-positive controls)",
+    "S1": "data harvesting / exfiltration (T1213, T1530, T1078)",
+    "S2": "privilege escalation (T1098, T1548, T1078)",
+    "S3": "destructive or obfuscated SQL by an authorised user (T1485, T1027, T1078)"
+  },
+  "event_counts": {
+    "db.session.start": 606,
+    "db.session.query": 47890,
+    "db.session.end": 606
+  },
+  "teleport_sessions": 606,
+  "query_events": {
+    "total": 47890,
+    "by_class": {
+      "B0": 47807,
+      "S1": 20,
+      "B1": 23,
+      "S2": 20,
+      "S3": 20
+    },
+    "by_db_role": {
+      "dba": 992,
+      "proc_officer": 4725,
+      "analyst_ro": 8681,
+      "app_service": 33492
+    },
+    "by_sim_day": {
+      "1": 5343,
+      "2": 5084,
+      "3": 4691,
+      "4": 4249,
+      "5": 4096,
+      "6": 545,
+      "7": 599,
+      "8": 5083,
+      "9": 4525,
+      "10": 4802,
+      "11": 4472,
+      "12": 3575,
+      "13": 497,
+      "14": 329
+    },
+    "by_sim_hour": {
+      "0": 15,
+      "1": 140,
+      "2": 185,
+      "3": 90,
+      "4": 60,
+      "5": 47,
+      "6": 78,
+      "7": 43,
+      "8": 1745,
+      "9": 3569,
+      "10": 3777,
+      "11": 4377,
+      "12": 5128,
+      "13": 3957,
+      "14": 5482,
+      "15": 5377,
+      "16": 4027,
+      "17": 3083,
+      "18": 1626,
+      "19": 1038,
+      "20": 1336,
+      "21": 1785,
+      "22": 762,
+      "23": 163
+    }
+  },
+  "malicious_base_rate": {
+    "malicious_query_events": 60,
+    "total_query_events": 47890,
+    "rate_percent": 0.1253,
+    "target_percent": 0.125,
+    "literature_anchors": {
+      "CERT insider threat r4.2": 0.022,
+      "LADOHD malicious window": 0.44
+    }
+  },
+  "ground_truth": {
+    "statements_issued": 47890,
+    "statements_matched_to_audit_events": 47890,
+    "statements_with_no_audit_event": 0,
+    "audit_events_not_attributable": 0,
+    "denied_by_postgres_by_class": {
+      "S2": 2,
+      "S3": 1
+    },
+    "denied_by_postgres_total": 3
+  },
+  "finding_5_teleport_success_semantics": "A db.session.query event with success=true means the statement was ALLOWED BY TELEPORT RBAC and forwarded to PostgreSQL. It does NOT mean PostgreSQL executed it. Statements PostgreSQL refused (for example an analyst_ro GRANT, or SQL whose obfuscation made it syntactically invalid) still appear in the Teleport audit log as successful events. The Teleport audit trail therefore records intent and authorisation, not outcome. The ground truth retains denied_by_postgres so this distinction is measurable; it is reported in the thesis as a limitation of Teleport-only telemetry.",
+  "timestamp_semantics": "Each event carries two clocks. `time` is the real wall-clock instant Teleport wrote the event, compressed into the few minutes the generator ran. `sim_ts`, `sim_day` and `sim_hour` are the analytic timeline the corpus models, spanning 14 simulated days. All detection logic and all reported statistics use the simulated clock.",
+  "detection": {
+    "rules": {
+      "canonical_source": "rules/*.yaral (YARA-L 2.0)",
+      "executed_by": "scripts/detect.py",
+      "semantically_identical": true,
+      "count": 11
+    },
+    "alerts_emitted": 18,
+    "alerts_by_class": {
+      "S1": 4,
+      "B1": 6,
+      "S2": 4,
+      "S3": 4
+    },
+    "alerts_by_rule": {
+      "PG-EXF-001": 2,
+      "PG-EXF-003": 2,
+      "PG-EXF-002": 3,
+      "PG-PRIV-001": 2,
+      "PG-PRIV-003": 3,
+      "PG-ANTIF-001": 1,
+      "PG-PRIV-002": 1,
+      "PG-TAMP-004": 1,
+      "PG-TAMP-003": 1,
+      "PG-TAMP-002": 1,
+      "PG-TAMP-001": 1
+    },
+    "step_hit_rate": {
+      "S1": {
+        "injected": 20,
+        "alerted": 10,
+        "missed": 10
+      },
+      "S2": {
+        "injected": 20,
+        "alerted": 11,
+        "missed": 9
+      },
+      "S3": {
+        "injected": 20,
+        "alerted": 14,
+        "missed": 6
+      }
+    },
+    "session_level_detection": "12/12 attack sessions raised at least one alert",
+    "baseline_sessions": 588,
+    "baseline_sessions_alerting": 0
+  }
+}

@@ -1,0 +1,5 @@
+scenario_class,description,injected_steps,steps_alerted,steps_missed,step_hit_rate_pct,benign_sessions_alerting,of_which_B1,of_which_B0,total_B0_sessions,B0_false_positive_rate_pct
+S1,data harvesting / exfiltration,20,10,10,50.0,3,3,0,588,0.0
+S2,privilege escalation,20,11,9,55.0,2,2,0,588,0.0
+S3,destructive or obfuscated SQL,20,14,6,70.0,1,1,0,588,0.0
+TOTAL,all attack classes,60,35,25,58.33,6,6,0,588,

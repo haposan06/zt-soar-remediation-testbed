@@ -1,0 +1,126 @@
+{
+  "artefact_id": "83b1f1e6-2651-47e3-8598-c292cb49cbb9",
+  "alert_id": "ALRT-0011",
+  "rule_id": "PG-EXF-002",
+  "scenario_class": "S1",
+  "arm": "gemini",
+  "model_id": "gemini-3.1-pro-preview",
+  "model_version": "gemini-3.1-pro-preview",
+  "prompt_version": "soar-remediation-v1.1.0",
+  "prompt_fingerprint": "bba831dba86cd027",
+  "temperature": null,
+  "top_p": null,
+  "max_tokens": 16384,
+  "json_mode": false,
+  "thinking_budget": 0,
+  "sample_index": 1,
+  "request_timestamp": "2026-09-12T15:07:40Z",
+  "latency_ms": 32352.06,
+  "raw_response_text": "{\n  \"rationale\": \"The evidence shows the principal svc.app@eproc.test conducting paginated reads followed by a bulk export of sensitive employee data (salary, national_id, bank_account) via COPY TO STDOUT. This activity occurs outside of normal business hours and strongly indicates active data exfiltration. Applying a Teleport lock specifically to this user halts the unauthorized extraction without disabling the shared app_service database role, preserving legitimate application traffic.\",\n  \"language\": \"tsh\",\n  \"script\": \"tctl lock --user=svc.app@eproc.test --ttl=12h --message=\\\"ALRT-0011: Suspected data exfiltration of sensitive employee records\\\"\",\n  \"rollback\": \"IRREVERSIBLE: The tctl lock command generates a dynamic UUID for the lock name. To revert this action, an administrator must manually identify the lock using 'tctl get locks' and remove it with 'tctl rm lock/<lock-name>'.\",\n  \"confidence\": \"high\"\n}",
+  "parse_ok": true,
+  "parse_error": null,
+  "parse_repaired": false,
+  "strict_parse_error": null,
+  "rationale": "The evidence shows the principal svc.app@eproc.test conducting paginated reads followed by a bulk export of sensitive employee data (salary, national_id, bank_account) via COPY TO STDOUT. This activity occurs outside of normal business hours and strongly indicates active data exfiltration. Applying a Teleport lock specifically to this user halts the unauthorized extraction without disabling the shared app_service database role, preserving legitimate application traffic.",
+  "language": "tsh",
+  "script": "tctl lock --user=svc.app@eproc.test --ttl=12h --message=\"ALRT-0011: Suspected data exfiltration of sensitive employee records\"",
+  "rollback": "IRREVERSIBLE: The tctl lock command generates a dynamic UUID for the lock name. To revert this action, an administrator must manually identify the lock using 'tctl get locks' and remove it with 'tctl rm lock/<lock-name>'.",
+  "confidence": "high",
+  "extra_keys": [],
+  "missing_keys": [],
+  "attempts": 1,
+  "endpoint": "vertex:<redacted-project>:global",
+  "finish_reason": "STOP",
+  "truncated": false,
+  "reasoning_mode": "high",
+  "reasoning_detail": "gemini:thinking_level=HIGH",
+  "harness_version": "generate-v1.1.0",
+  "alert_summary": {
+    "alert_id": "ALRT-0011",
+    "rule_id": "PG-EXF-002",
+    "rule_name": "Bulk export via COPY TO STDOUT",
+    "severity_hint": "high",
+    "teleport_user": "svc.app@eproc.test",
+    "db_role": "app_service",
+    "source_ip": "10.20.1.10",
+    "db_name": "procurement",
+    "session_id": "b86fb472-b58a-46fd-bfe3-a5beb5c50a59",
+    "first_seen": "2026-08-11T02:40:00Z",
+    "last_seen": "2026-08-11T03:05:00Z",
+    "event_count": 1,
+    "affected_objects": [
+      "public.employees"
+    ],
+    "attack_technique": [
+      "T1213",
+      "T1005"
+    ],
+    "evidence": [
+      {
+        "ts": "2026-08-11T02:40:00Z",
+        "statement": "SELECT count(*) FROM employees",
+        "rows": 1,
+        "duration_ms": 0.93,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-11T02:45:00Z",
+        "statement": "SELECT employee_id, full_name, email, salary, national_id, bank_account FROM employees ORDER BY employee_id LIMIT 300 OFFSET 0",
+        "rows": 300,
+        "duration_ms": 2.64,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-11T02:50:00Z",
+        "statement": "SELECT employee_id, full_name, email, salary, national_id, bank_account FROM employees ORDER BY employee_id LIMIT 300 OFFSET 300",
+        "rows": 300,
+        "duration_ms": 1.69,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-11T02:55:00Z",
+        "statement": "SELECT employee_id, full_name, email, salary, national_id, bank_account FROM employees ORDER BY employee_id LIMIT 300 OFFSET 600",
+        "rows": 300,
+        "duration_ms": 1.58,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-11T03:00:00Z",
+        "statement": "SELECT employee_id, full_name, email, salary, national_id, bank_account FROM employees ORDER BY employee_id LIMIT 300 OFFSET 900",
+        "rows": 300,
+        "duration_ms": 1.74,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-11T03:05:00Z",
+        "statement": "COPY (SELECT employee_id, national_id, bank_account, salary FROM employees) TO STDOUT WITH CSV HEADER",
+        "rows": 1200,
+        "duration_ms": 1.97,
+        "matched_rules": [
+          "PG-EXF-002"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      }
+    ],
+    "baseline_context": {
+      "typical_daily_rows": 30761,
+      "typical_hours_utc": "08:00-17:00",
+      "usual_source_ips": [
+        "10.20.1.10"
+      ],
+      "note": "Role app_service normally returns about 30761 rows per simulated day across the 14-day baseline, almost all inside 08:00-17:00."
+    },
+    "change_window": null
+  }
+}

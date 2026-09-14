@@ -1,0 +1,111 @@
+{
+  "artefact_id": "d24fa7e4-efe8-4b96-aab8-68200ea4c002",
+  "alert_id": "ALRT-0005",
+  "rule_id": "PG-EXF-002",
+  "scenario_class": "S1",
+  "arm": "claude",
+  "model_id": "claude-opus-4-6",
+  "model_version": "claude-opus-4-6",
+  "prompt_version": "soar-remediation-v1.1.0",
+  "prompt_fingerprint": "bba831dba86cd027",
+  "temperature": null,
+  "top_p": null,
+  "max_tokens": 16384,
+  "json_mode": false,
+  "thinking_budget": 0,
+  "sample_index": 2,
+  "request_timestamp": "2026-09-12T15:12:10Z",
+  "latency_ms": 131097.06,
+  "raw_response_text": "{\"rationale\":\"The evidence shows eve.contractor@eproc.test (analyst_ro) executed a textbook exfiltration sequence: a COUNT probe, two broad SELECTs pulling payments.bank_account_snapshot and vendors.bank_account, and a COPY TO STDOUT export—totalling ~36,000 rows in 12 minutes. Activity occurred at 23:05–23:17 UTC, well outside the 08:00–17:00 baseline, from source IP 10.20.7.88 which is not among the principal's usual addresses, and volume exceeds the 3,947 rows/day baseline by an order of magnitude. The remediation locks the Teleport principal to prevent new sessions, terminates any still-active database backends from the implicated source, and snapshots the audit evidence into a quarantine table for forensic review.\",\"language\":\"bash\",\"script\":\"set -euo pipefail\\n\\n# Lock the Teleport principal to prevent new or re-established sessions\\ntctl lock --user=eve.contractor@eproc.test --ttl=24h --message=\\\"ALRT-0005: Suspected bulk exfiltration of payment and vendor bank-account data outside normal hours and source IP. Pending investigation.\\\"\\n\\n# Terminate active backends and preserve forensic evidence\\npsql -U dba -d procurement -h localhost -p 5432 <<'SQL'\\n-- Snapshot audit trail for the implicated session into a quarantine table\\nCREATE TABLE public.quarantine_alrt_0005 AS\\nSELECT *\\nFROM public.audit_log\\nWHERE session_id = '62cd7b6b-770f-4440-a5af-1c9771cf1089';\\n\\n-- Terminate any active backends from the suspect source address\\nSELECT pg_terminate_backend(pid)\\nFROM pg_stat_activity\\nWHERE usename = 'analyst_ro'\\n  AND client_addr = '10.20.7.88'::inet\\n  AND pid <> pg_backend_pid();\\nSQL\",\"rollback\":\"IRREVERSIBLE: pg_terminate_backend cannot be undone. The Teleport lock on eve.contractor@eproc.test auto-expires after 24h; to lift it earlier, run `tctl get locks` to find the lock name and then `tctl rm lock/<name>`. The quarantine table can be removed with: psql -U dba -d procurement -c 'DROP TABLE IF EXISTS public.quarantine_alrt_0005;'\",\"confidence\":\"high\"}",
+  "parse_ok": true,
+  "parse_error": null,
+  "parse_repaired": false,
+  "strict_parse_error": null,
+  "rationale": "The evidence shows eve.contractor@eproc.test (analyst_ro) executed a textbook exfiltration sequence: a COUNT probe, two broad SELECTs pulling payments.bank_account_snapshot and vendors.bank_account, and a COPY TO STDOUT export—totalling ~36,000 rows in 12 minutes. Activity occurred at 23:05–23:17 UTC, well outside the 08:00–17:00 baseline, from source IP 10.20.7.88 which is not among the principal's usual addresses, and volume exceeds the 3,947 rows/day baseline by an order of magnitude. The remediation locks the Teleport principal to prevent new sessions, terminates any still-active database backends from the implicated source, and snapshots the audit evidence into a quarantine table for forensic review.",
+  "language": "bash",
+  "script": "set -euo pipefail\n\n# Lock the Teleport principal to prevent new or re-established sessions\ntctl lock --user=eve.contractor@eproc.test --ttl=24h --message=\"ALRT-0005: Suspected bulk exfiltration of payment and vendor bank-account data outside normal hours and source IP. Pending investigation.\"\n\n# Terminate active backends and preserve forensic evidence\npsql -U dba -d procurement -h localhost -p 5432 <<'SQL'\n-- Snapshot audit trail for the implicated session into a quarantine table\nCREATE TABLE public.quarantine_alrt_0005 AS\nSELECT *\nFROM public.audit_log\nWHERE session_id = '62cd7b6b-770f-4440-a5af-1c9771cf1089';\n\n-- Terminate any active backends from the suspect source address\nSELECT pg_terminate_backend(pid)\nFROM pg_stat_activity\nWHERE usename = 'analyst_ro'\n  AND client_addr = '10.20.7.88'::inet\n  AND pid <> pg_backend_pid();\nSQL",
+  "rollback": "IRREVERSIBLE: pg_terminate_backend cannot be undone. The Teleport lock on eve.contractor@eproc.test auto-expires after 24h; to lift it earlier, run `tctl get locks` to find the lock name and then `tctl rm lock/<name>`. The quarantine table can be removed with: psql -U dba -d procurement -c 'DROP TABLE IF EXISTS public.quarantine_alrt_0005;'",
+  "confidence": "high",
+  "extra_keys": [],
+  "missing_keys": [],
+  "attempts": 1,
+  "endpoint": "vertex-anthropic:<redacted-project>:global",
+  "finish_reason": "END_TURN",
+  "truncated": false,
+  "reasoning_mode": "high",
+  "reasoning_detail": "claude:thinking=adaptive,effort=high",
+  "harness_version": "generate-v1.1.0",
+  "alert_summary": {
+    "alert_id": "ALRT-0005",
+    "rule_id": "PG-EXF-002",
+    "rule_name": "Bulk export via COPY TO STDOUT",
+    "severity_hint": "high",
+    "teleport_user": "eve.contractor@eproc.test",
+    "db_role": "analyst_ro",
+    "source_ip": "10.20.7.88",
+    "db_name": "procurement",
+    "session_id": "62cd7b6b-770f-4440-a5af-1c9771cf1089",
+    "first_seen": "2026-08-07T23:05:00Z",
+    "last_seen": "2026-08-07T23:17:00Z",
+    "event_count": 1,
+    "affected_objects": [
+      "public.contracts",
+      "public.payments",
+      "public.vendors"
+    ],
+    "attack_technique": [
+      "T1213",
+      "T1005"
+    ],
+    "evidence": [
+      {
+        "ts": "2026-08-07T23:05:00Z",
+        "statement": "SELECT count(*) FROM payments",
+        "rows": 1,
+        "duration_ms": 2.53,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-07T23:09:00Z",
+        "statement": "SELECT payment_id, invoice_no, amount, bank_account_snapshot FROM payments",
+        "rows": 12000,
+        "duration_ms": 28.91,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-07T23:13:00Z",
+        "statement": "SELECT p.payment_id, p.bank_account_snapshot, v.legal_name, v.bank_account FROM payments p JOIN contracts c USING (contract_id) JOIN vendors v USING (vendor_id)",
+        "rows": 12000,
+        "duration_ms": 18.49,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-07T23:17:00Z",
+        "statement": "COPY (SELECT payment_id, invoice_no, amount, bank_account_snapshot FROM payments) TO STDOUT WITH CSV HEADER",
+        "rows": 12000,
+        "duration_ms": 5.34,
+        "matched_rules": [
+          "PG-EXF-002"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      }
+    ],
+    "baseline_context": {
+      "typical_daily_rows": 3947,
+      "typical_hours_utc": "08:00-17:00",
+      "usual_source_ips": [
+        "10.20.4.61",
+        "10.20.4.62"
+      ],
+      "note": "Role analyst_ro normally returns about 3947 rows per simulated day across the 14-day baseline, almost all inside 08:00-17:00."
+    },
+    "change_window": null
+  }
+}

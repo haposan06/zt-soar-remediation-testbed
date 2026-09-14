@@ -1,0 +1,36 @@
+rule pg_exf_001_unbounded_sensitive_read {
+
+  meta:
+    author         = "thesis-lab"
+    description    = "Unbounded read of sensitive employee or vendor columns: a SELECT touching salary, national identifier, bank account, tax identifier or scoring columns of the employees or vendors tables, issued without a LIMIT clause and returning 500 or more rows."
+    rule_id        = "PG-EXF-001"
+    rule_name      = "Unbounded read of sensitive employee or vendor columns"
+    scenario_class = "S1"
+    severity       = "High"
+    mitre_attack   = "T1213"
+    data_source    = "Teleport db.session.query (TELEPORT_DB_AUDIT)"
+
+  events:
+    $e.metadata.event_type   = "GENERIC_EVENT"
+    $e.metadata.product_name = "Teleport"
+    $e.metadata.vendor_name  = "Gravitational"
+    $e.metadata.log_type     = "TELEPORT_DB_AUDIT"
+
+    // db_query matches ^\s*select\b
+    re.regex($e.target.resource.attribute.labels["db_query"], `(?i)^\s*select\b`)
+
+    // db_query matches the sensitive-column regex
+    re.regex($e.target.resource.attribute.labels["db_query"], `(?i)(salary|national_id|bank_account|tax_id|bank_account_snapshot|technical_score|bid_amount)`)
+
+    // db_query reads from employees or vendors
+    re.regex($e.target.resource.attribute.labels["db_query"], `(?i)\bfrom\s+(public\.)?(employees|vendors)\b`)
+
+    // db_query does NOT contain a LIMIT clause
+    not re.regex($e.target.resource.attribute.labels["db_query"], `(?i)\blimit\b`)
+
+    // rows returned >= 500
+    strings.to_int($e.target.resource.attribute.labels["rows"]) >= 500
+
+  condition:
+    $e
+}

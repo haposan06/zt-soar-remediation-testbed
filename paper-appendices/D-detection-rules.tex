@@ -1,0 +1,242 @@
+% !TEX root = ../main.tex
+%% Detection Rules and Parser
+\section{Detection Rules and Parser}
+\label{app:rules}
+
+Detection was deterministic. This appendix records the rules that raised the alerts
+used in the experiment, together with the mapping from Teleport audit events to the
+fields the rules read. Detection is not an evaluated claim of this thesis; the rules
+are documented so that the alert set is reproducible.
+
+\subsection{Teleport audit event to alert field mapping}
+\label{app:rules:mapping}
+
+Teleport Community Edition writes one JSON object per audit event. Five event codes
+are relevant to database access, and two carry SQL text. The lab corpus was generated
+through \code{psql}, which uses the simple query protocol, so every statement arrived
+as \code{TDB02I}. In the production tenant described in
+Section~\ref{sec:method:secops}, 21 of 25 sampled statement events were instead
+\code{TPG00I}, because application connection pools use prepared statements. A
+deployment of these rules must therefore match both event types; the parse event
+carries the statement text with \code{\$n} placeholders in place of literal values,
+which leaves every predicate below evaluable except those that test a literal.
+
+\begin{table}[H]
+\centering
+\caption{Teleport database audit event codes}
+\label{tab:app:eventcodes}
+\small
+\begin{tabular}{@{}llp{6.2cm}@{}}
+\toprule
+Code & Event & Meaning \\
+\midrule
+\code{TDB00I} & \code{db.session.start}       & Session to the database established \\
+\code{TDB00W} & \code{db.session.start}       & Session denied by proxy authorisation \\
+\code{TDB01I} & \code{db.session.end}         & Session closed \\
+\code{TDB02I} & \code{db.session.query}       & A single SQL statement was proxied (simple query protocol) \\
+\code{TPG00I} & \code{db.session.postgres.statements.parse} & A prepared statement was parsed (extended query protocol); production only, not exercised by the lab corpus \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:app:udmmap} gives the mapping the rules read. It was verified against
+the production tenant rather than taken from documentation: a sample of 25 live
+events under the \code{TELEPORT\_ACCESS\_PLANE} log type was read through the search
+API, only field paths and non-identifying metadata were retained, and no event
+content was stored. The log type is the native one, but the tenant's
+\code{parserVersion} reads \code{custom-parser}, so the field placement below is that
+of the organisation's parser override and not of the stock parser. The first draft of
+this appendix placed the statement text in a \code{db\_query} resource label; no
+such label exists in the live events, and the rule sources were rewritten to the
+verified paths. The originals are retained beside them for traceability. Because the
+experiment was executed against the local corpus rather than through ingestion, the
+same predicates are transcribed line for line into the Python evaluator, and the
+YARA-L sources below are the platform-native expression of what was actually run.
+
+\begin{table}[H]
+\centering
+\caption{Teleport audit field to UDM field mapping}
+\label{tab:app:udmmap}
+\small
+\begin{tabular}{@{}llp{4.1cm}@{}}
+\toprule
+Teleport field & UDM field (verified) & Purpose in rules \\
+\midrule
+\code{event}          & \code{metadata.product\_event\_type}             & Source scoping \\
+\code{code}           & \code{additional.fields["code"]}                 & Event code \\
+\code{user}           & \code{principal.user.userid}                     & The named human \\
+\code{db\_user}       & \code{target.user.user\_display\_name}           & Database role assumed \\
+\code{db\_name}       & \code{...labels["db\_name"]}                     & Database \\
+\code{db\_service}    & \code{target.application}                        & Proxied service \\
+\code{db\_query}      & \code{security\_result.description}              & Statement text \\
+\code{sid}            & \code{network.session\_id}                       & Session correlation \\
+\code{time}           & \code{metadata.event\_timestamp}                 & Hour-of-day tests \\
+(none)                 & \code{additional.fields["rows\_affected"]}       & Row count; database-side enrichment, absent from Teleport \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Two properties of this mapping constrain what the rules can express. First,
+Teleport's \code{success} records whether the proxy's own role-based access control
+permitted the statement, not whether PostgreSQL executed it; a statement the proxy
+allowed and the database refused is logged as successful. Ground truth therefore
+records the database-side outcome separately. Second, the stream carries statements
+and not result sets, so the number of rows a statement returned or changed is not
+observable from Teleport at all. Four rules (\code{PG-EXF-001}, \code{PG-EXF-003},
+\code{PG-TAMP-001} and \code{PG-TAMP-004}) nevertheless test a row count, and the
+alert evidence shown to the remediation arms carries one. In the lab that value came
+from the traffic generator's own record, joined to the audit event by the statement
+marker, standing in for the database-side enrichment a deployment would have to
+build. To measure how much the detection layer leaned on it, the evaluator was re-run
+with the row count hidden: step-level recall fell from 35 to 25 of 60, session-level
+recall from 12 to 10 of 12, and benign alerting from six sessions to three. The two
+attack sessions lost are the vendor banking sweep (\code{PG-EXF-001}) and the sealed-bid
+tampering (\code{PG-TAMP-004}); three of the six false-positive controls also stop
+alerting. A proxy-only deployment of these rules would therefore have produced thirteen
+alerts rather than eighteen, and would have lost half of the benign alerts on which the
+generative arm's restraint was measured. Section~\ref{sec:discussion} carries this as a limit on how far
+the alert set represents what \secops{} alone would raise.
+
+\subsection{Rules}
+\label{app:rules:list}
+
+Eleven rules were written, covering the three malicious behaviour classes. Ten are
+single-event; \code{PG-EXF-003} is session-scoped and aggregates over a one-hour match
+window. Table~\ref{tab:app:ruleindex} indexes them; the full YARA-L~2.0 sources follow.
+
+\begin{table}[H]
+\centering
+\caption{Detection rule index}
+\label{tab:app:ruleindex}
+\small
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lp{4.4cm}cllrr@{}}
+\toprule
+Rule & Intent & Class & Severity & ATT\&CK & Alerts & TP \\
+\midrule
+PG-EXF-001   & Unbounded read of sensitive columns    & S1 & High     & T1213 & 2 & 1 \\
+PG-EXF-002   & Bulk export via \code{COPY TO STDOUT}  & S1 & High     & T1213, T1005 & 3 & 2 \\
+PG-EXF-003   & Out-of-hours paginated bulk read       & S1 & High     & T1213, T1030 & 2 & 1 \\
+PG-PRIV-001  & Grant to self or lateral role grant    & S2 & Critical & T1078.004 & 2 & 1 \\
+PG-PRIV-002  & Role altered to \code{SUPERUSER}       & S2 & Critical & T1098 & 1 & 1 \\
+PG-PRIV-003  & Shadow role or default privilege change& S2 & High     & T1136.001 & 3 & 2 \\
+PG-TAMP-001  & \code{DELETE}/\code{UPDATE} unbounded  & S3 & Critical & T1565.001 & 1 & 0 \\
+PG-TAMP-002  & \code{TRUNCATE} or \code{DROP}         & S3 & Critical & T1485 & 1 & 1 \\
+PG-TAMP-003  & Obfuscated SQL construction            & S3 & High     & T1027 & 1 & 1 \\
+PG-TAMP-004  & Mass update of sealed bid amounts      & S3 & Critical & T1565.001 & 1 & 1 \\
+PG-ANTIF-001 & Audit log tampering                    & S3 & Critical & T1070 & 1 & 1 \\
+\midrule
+\multicolumn{5}{@{}l}{Total} & 18 & 12 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The \emph{Alerts} column gives the number of alerts each rule raised over the whole
+corpus and \emph{TP} the number of those that were true positives, that is, that fired
+on a session belonging to class S1, S2 or S3. The six alerts that are not true
+positives all fired on class B1 sessions, which is what B1 exists to produce. No rule
+fired on any of the \num{588} class B0 sessions. The six false positives are spread
+one apiece across six different rules (\code{PG-EXF-001}, \code{PG-EXF-002},
+\code{PG-EXF-003}, \code{PG-PRIV-001}, \code{PG-PRIV-003} and \code{PG-TAMP-001}),
+which is the pattern to expect when the benign-but-alerting sessions were designed to
+exercise a different detector each. \code{PG-TAMP-001} is the only rule whose every
+alert was a false positive: its single firing was the scheduled retention job,
+\code{DELETE FROM payments WHERE paid\_at < now() - interval '700 days'}, which
+removed \num{1263} rows. The statement is predicated and entirely routine, but the
+rule keys on rows affected rather than on the presence of a \code{WHERE} clause, and
+at that volume a legitimate retention sweep and a sabotage attempt are the same event
+at the statement level. Separating them requires the change window, which is supplied
+to the remediation stage as \code{change\_window} but is not available to the rule.
+
+\subsection{Correspondence with the production rule set}
+\label{app:rules:production}
+
+The production tenant carries fifteen Teleport rules written by the organisation's
+security team, twelve of them for database sessions, all but one enabled. They were
+exported read-only. Table~\ref{tab:app:correspondence} sets each lab rule against its
+nearest deployed counterpart and quotes the deployed predicate in abridged form. The
+pattern is consistent: the deployed rules are generic, multi-engine keyword matchers
+over \code{security\_result.description}, while the lab rules are PostgreSQL-specific,
+role-aware and grounded in the schema under protection. Three deployed database rules
+have no lab counterpart because they address concerns outside the insider classes:
+first-time access, sessions without multi-factor authentication, and lateral movement
+across databases. A fourth, \code{teleport\_db\_sql\_injection\_probe}, matches
+\code{UNION SELECT} with a comment terminator, boolean and timing probes and hex
+encoding. It is the deployed trace of the framing the research proposal used, and it
+is deliberately not reproduced in the lab for the reason given in
+Appendix~\ref{app:scenarios}: those patterns belong to an unauthenticated attacker
+reaching the database through an application, not to an authorised principal on a
+proxied session. Table~\ref{tab:app:proddetections} gives the detections each deployed
+rule raised over the thirty days to 7~September~2026, as a real-world anchor for alert
+volume; only counts were read.
+
+\begin{table}[H]
+\centering
+\caption{Lab rules against their nearest deployed counterparts}
+\label{tab:app:correspondence}
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\providecommand{\pcode}[1]{{\ttfamily\hspace{0pt}#1}}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{1.6cm}>{\raggedright\arraybackslash}p{3.2cm}>{\raggedright\arraybackslash}p{3.7cm}>{\raggedright\arraybackslash}p{5.5cm}@{}}
+\toprule
+Lab rule & Deployed counterpart & Deployed predicate (abridged) & Difference \\
+\midrule
+PG-EXF-001 & \pcode{teleport\_\allowbreak{}db\_\allowbreak{}sensitive\_\allowbreak{}data} & regex \pcode{credentials|\allowbreak{}api\_\allowbreak{}key|\allowbreak{}credit\_\allowbreak{}card|\allowbreak{}secret} & Deployed keys on generic column names, none of which exist in this schema; lab names the schema's sensitive columns and requires no \pcode{LIMIT} \\
+PG-EXF-002 & none & & \pcode{COPY \dots{} TO STDOUT} is uncovered; \pcode{teleport\_\allowbreak{}db\_\allowbreak{}file\_\allowbreak{}os\_\allowbreak{}ops} matches only \pcode{COPY \dots{} PROGRAM} \\
+PG-EXF-003 & \pcode{teleport\_\allowbreak{}db\_\allowbreak{}data\_\allowbreak{}exfiltration}; \pcode{teleport\_\allowbreak{}db\_\allowbreak{}after\_\allowbreak{}hours} & more than 200 events per user in 5 minutes; 17:00--22:00 UTC window & Deployed exfiltration is a query-count threshold with no notion of sensitivity; S1 sessions issue three to seven statements and would not trip it \\
+PG-PRIV-001 & \pcode{teleport\_\allowbreak{}db\_\allowbreak{}privilege\_\allowbreak{}escalation} & regex \pcode{GRANT (ALL|\allowbreak{}SELECT|\allowbreak{}\dots)} & Deployed fires on every \pcode{GRANT} by any role; lab restricts to non-administrative roles and self-grants \\
+PG-PRIV-002 & \pcode{teleport\_\allowbreak{}db\_\allowbreak{}privilege\_\allowbreak{}escalation} & regex \pcode{ALTER (USER|\allowbreak{}ROLE)} & Deployed fires on any role alteration; lab requires a privilege attribute such as \pcode{SUPERUSER} \\
+PG-PRIV-003 & \pcode{teleport\_\allowbreak{}db\_\allowbreak{}privilege\_\allowbreak{}escalation} & regex \pcode{CREATE (USER|\allowbreak{}ROLE)} & \pcode{ALTER DEFAULT PRIVILEGES} is uncovered in the deployed set \\
+PG-TAMP-001 & \pcode{teleport\_\allowbreak{}db\_\allowbreak{}destructive\_\allowbreak{}query\_\allowbreak{}high}; \pcode{teleport\_\allowbreak{}db\_\allowbreak{}critical\_\allowbreak{}write} & regex \pcode{DELETE FROM}; \pcode{UPDATE \dots{} SET} on named production databases & Deployed has no \pcode{WHERE}-clause or volume test, so every delete and update on a production database alerts \\
+PG-TAMP-002 & \pcode{teleport\_\allowbreak{}db\_\allowbreak{}destructive\_\allowbreak{}query\_\allowbreak{}critical} & regex \pcode{DROP TABLE|\allowbreak{}TRUNCATE TABLE|\allowbreak{}ALTER TABLE} & Closest match in the set; deployed also fires on schema migration \\
+PG-TAMP-003 & none & & Comment-split keywords and \pcode{chr()} construction are uncovered; case mangling is caught incidentally by \pcode{nocase} \\
+PG-TAMP-004 & \pcode{teleport\_\allowbreak{}db\_\allowbreak{}critical\_\allowbreak{}write} & regex \pcode{UPDATE \dots{} SET} on named databases & Deployed fires on every update; lab requires the \pcode{bids} table, a sealed-value column and volume \\
+PG-ANTIF-001 & \pcode{teleport\_\allowbreak{}db\_\allowbreak{}destructive\_\allowbreak{}query\_\allowbreak{}high} & regex \pcode{DELETE FROM} & Deployed is not audit-specific; \pcode{UPDATE} of \pcode{audit\_\allowbreak{}log} rows is covered only by the generic write rule \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\input{tables/production_detections}
+
+\subsection{Rule sources}
+\label{app:rules:sources}
+
+The sources are reproduced verbatim from \code{lab/rules/}, in the field mapping of
+Table~\ref{tab:app:udmmap}. The first-draft sources that used the unverified
+\code{db\_query} label are kept in \code{lab/rules/\_v1\_labels/} and differ only in
+field paths.
+
+\subsubsection{Data harvesting (S1)}
+\lstinputlisting[language=yaral,caption={PG-EXF-001}]{../testbed/rules/pg-exf-001.yaral}
+\lstinputlisting[language=yaral,caption={PG-EXF-002}]{../testbed/rules/pg-exf-002.yaral}
+\lstinputlisting[language=yaral,caption={PG-EXF-003}]{../testbed/rules/pg-exf-003.yaral}
+
+\subsubsection{Privilege escalation (S2)}
+\lstinputlisting[language=yaral,caption={PG-PRIV-001}]{../testbed/rules/pg-priv-001.yaral}
+\lstinputlisting[language=yaral,caption={PG-PRIV-002}]{../testbed/rules/pg-priv-002.yaral}
+\lstinputlisting[language=yaral,caption={PG-PRIV-003}]{../testbed/rules/pg-priv-003.yaral}
+
+\subsubsection{Destructive or obfuscated SQL (S3)}
+\lstinputlisting[language=yaral,caption={PG-TAMP-001}]{../testbed/rules/pg-tamp-001.yaral}
+\lstinputlisting[language=yaral,caption={PG-TAMP-002}]{../testbed/rules/pg-tamp-002.yaral}
+\lstinputlisting[language=yaral,caption={PG-TAMP-003}]{../testbed/rules/pg-tamp-003.yaral}
+\lstinputlisting[language=yaral,caption={PG-TAMP-004}]{../testbed/rules/pg-tamp-004.yaral}
+\lstinputlisting[language=yaral,caption={PG-ANTIF-001}]{../testbed/rules/pg-antif-001.yaral}
+
+\subsection{Rule hit rate over the injected attacks}
+\label{app:rules:hitrate}
+
+\input{tables/detection_hitrate}
+
+Every attack session was detected: session-level recall was 12 of 12. At the level of
+individual statements, however, just over four steps in ten went undetected. That is the expected consequence
+of writing rules that are specific rather than sensitive: every rule fires on a single
+statement or a bounded session window, so reconnaissance and verification statements such as
+\code{SELECT current\_user} and \code{SELECT count(*)} pass without comment. Those
+are in fact all of the missed steps, and the rules are arguably right to ignore them,
+since the same statements are issued constantly by legitimate users. The design accepts this, because the object of study is what happens after an
+alert is raised, and a rule set tuned for recall would have flooded the queue with
+routine traffic and changed the base rate the corpus was built to hold. The
+complementary result is that none of the 588 routine sessions alerted; all six benign
+alerts came from the B1 class, which exists precisely to produce them.

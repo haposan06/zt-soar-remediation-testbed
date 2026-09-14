@@ -1,0 +1,260 @@
+{
+  "schema_version": "alerts-schema-v1",
+  "generated_at": "2026-09-01T04:00:00Z",
+  "testbed": "local procurement testbed, PostgreSQL 16 on localhost:5432 behind Teleport 16 on localhost:3080",
+  "alerts": [
+    {
+      "alert_id": "ALRT-0001",
+      "rule_id": "PG-EXF-001",
+      "rule_name": "Bulk read of sensitive employee columns by reporting role",
+      "scenario_class": "S1",
+      "is_true_positive": true,
+      "severity_hint": "high",
+      "principal": {
+        "teleport_user": "rina.hartono@eproc.test",
+        "db_role": "analyst_ro",
+        "source_ip": "10.20.4.61",
+        "teleport_roles": ["reporting-readonly", "sso-staff"],
+        "department": "Finance Reporting"
+      },
+      "db": {
+        "name": "procurement",
+        "host": "localhost",
+        "port": 5432,
+        "cluster": "pg-procurement-lab"
+      },
+      "session_id": "8f1c6a52-2d70-4b3e-9a11-6c0f7f2b9d43",
+      "first_seen": "2026-08-14T18:42:11Z",
+      "last_seen": "2026-08-14T19:07:58Z",
+      "event_count": 41,
+      "evidence": [
+        {
+          "ts": "2026-08-14T18:42:11Z",
+          "statement": "SELECT current_user, session_user;",
+          "rows": 1,
+          "duration_ms": 2.1
+        },
+        {
+          "ts": "2026-08-14T18:43:02Z",
+          "statement": "SELECT table_name, column_name FROM information_schema.columns WHERE column_name IN ('national_id','bank_account','salary');",
+          "rows": 6,
+          "duration_ms": 31.7
+        },
+        {
+          "ts": "2026-08-14T18:47:44Z",
+          "statement": "SELECT employee_id, full_name, email, department, salary FROM employees ORDER BY employee_id LIMIT 1000 OFFSET 0;",
+          "rows": 1000,
+          "duration_ms": 412.9
+        },
+        {
+          "ts": "2026-08-14T18:49:10Z",
+          "statement": "SELECT employee_id, full_name, email, department, salary FROM employees ORDER BY employee_id LIMIT 1000 OFFSET 1000;",
+          "rows": 1000,
+          "duration_ms": 388.4
+        },
+        {
+          "ts": "2026-08-14T18:55:26Z",
+          "statement": "SELECT employee_id, national_id, bank_account FROM employees ORDER BY employee_id LIMIT 1000 OFFSET 4000;",
+          "rows": 1000,
+          "duration_ms": 401.2
+        },
+        {
+          "ts": "2026-08-14T19:03:17Z",
+          "statement": "SELECT v.vendor_id, v.legal_name, v.tax_id, v.bank_account FROM vendors v ORDER BY v.vendor_id LIMIT 2000;",
+          "rows": 2000,
+          "duration_ms": 517.5
+        },
+        {
+          "ts": "2026-08-14T19:07:58Z",
+          "statement": "COPY (SELECT * FROM employees) TO STDOUT WITH CSV HEADER;",
+          "rows": 0,
+          "duration_ms": 8.3,
+          "client_addr": "10.20.4.61"
+        }
+      ],
+      "attack_technique": ["T1213", "T1005", "T1074.001"],
+      "affected_objects": ["public.employees", "public.vendors", "information_schema.columns"],
+      "baseline_context": {
+        "typical_daily_rows": 1800,
+        "typical_hours_utc": "00:30-10:00",
+        "usual_source_ips": ["10.20.4.61"],
+        "note": "This identity normally queries aggregate views of tenders and payments. It has never before selected from public.employees or read vendors.bank_account, and it holds no grant on the base employees table under the documented role model."
+      },
+      "detector": {
+        "name": "pg-stat-statements-profiler",
+        "version": "0.4.2",
+        "score": 0.94
+      }
+    },
+    {
+      "alert_id": "ALRT-0002",
+      "rule_id": "PG-TAMP-004",
+      "rule_name": "Update to sealed bid amount before sealed_until expiry",
+      "scenario_class": "S2",
+      "is_true_positive": true,
+      "severity_hint": "critical",
+      "principal": {
+        "teleport_user": "dedi.wibowo@eproc.test",
+        "db_role": "proc_officer",
+        "source_ip": "10.20.7.13",
+        "teleport_roles": ["procurement-officer", "sso-staff"],
+        "department": "Procurement Operations"
+      },
+      "db": {
+        "name": "procurement",
+        "host": "localhost",
+        "port": 5432,
+        "cluster": "pg-procurement-lab"
+      },
+      "session_id": "b26d90f4-71a8-4c55-8e2f-1d3a5b8c7e90",
+      "first_seen": "2026-08-19T16:11:03Z",
+      "last_seen": "2026-08-19T16:18:47Z",
+      "event_count": 9,
+      "evidence": [
+        {
+          "ts": "2026-08-19T16:11:03Z",
+          "statement": "SELECT tender_id, reference_no, closes_at, status FROM tenders WHERE reference_no = 'TND-2026-0442';",
+          "rows": 1,
+          "duration_ms": 4.8
+        },
+        {
+          "ts": "2026-08-19T16:12:39Z",
+          "statement": "SELECT bid_id, vendor_id, bid_amount, technical_score, sealed_until, status FROM bids WHERE tender_id = 442 ORDER BY bid_amount ASC;",
+          "rows": 5,
+          "duration_ms": 6.2
+        },
+        {
+          "ts": "2026-08-19T16:14:55Z",
+          "statement": "BEGIN;",
+          "rows": 0,
+          "duration_ms": 0.4
+        },
+        {
+          "ts": "2026-08-19T16:15:02Z",
+          "statement": "UPDATE bids SET bid_amount = 4185000000 WHERE bid_id = 20871;",
+          "rows": 1,
+          "duration_ms": 11.9
+        },
+        {
+          "ts": "2026-08-19T16:16:20Z",
+          "statement": "UPDATE bids SET technical_score = 92.5 WHERE bid_id = 20871;",
+          "rows": 1,
+          "duration_ms": 9.4
+        },
+        {
+          "ts": "2026-08-19T16:17:41Z",
+          "statement": "UPDATE bids SET bid_amount = bid_amount * 1.08 WHERE bid_id IN (20868, 20869, 20870);",
+          "rows": 3,
+          "duration_ms": 14.1
+        },
+        {
+          "ts": "2026-08-19T16:18:47Z",
+          "statement": "COMMIT;",
+          "rows": 0,
+          "duration_ms": 3.0
+        }
+      ],
+      "attack_technique": ["T1565.001", "T1078.002"],
+      "affected_objects": ["public.bids", "public.tenders"],
+      "baseline_context": {
+        "typical_daily_rows": 240,
+        "typical_hours_utc": "01:00-11:00",
+        "usual_source_ips": ["10.20.7.13", "10.20.7.14"],
+        "note": "Tender TND-2026-0442 (tender_id 442) closed at 2026-08-19T16:00:00Z. Every bid on it carries sealed_until = 2026-08-21T09:00:00Z, so no bid_amount or technical_score should change until the evaluation committee unseals. The officer owns this tender, so ownership based authorisation passes while the seal window is violated."
+      },
+      "detector": {
+        "name": "pg-audit-trigger-rules",
+        "version": "1.1.0",
+        "score": 0.99
+      }
+    },
+    {
+      "alert_id": "ALRT-0003",
+      "rule_id": "PG-PRIV-002",
+      "rule_name": "Superuser role session outside business hours with schema change",
+      "scenario_class": "B1",
+      "is_true_positive": false,
+      "severity_hint": "medium",
+      "principal": {
+        "teleport_user": "svc.migration@eproc.test",
+        "db_role": "dba",
+        "source_ip": "127.0.0.1",
+        "teleport_roles": ["db-breakglass", "ci-runner"],
+        "department": "Platform Engineering"
+      },
+      "db": {
+        "name": "procurement",
+        "host": "localhost",
+        "port": 5432,
+        "cluster": "pg-procurement-lab"
+      },
+      "session_id": "3ac5e118-9f42-4d6b-b077-2e91c4a60f58",
+      "first_seen": "2026-08-23T17:02:00Z",
+      "last_seen": "2026-08-23T17:26:12Z",
+      "event_count": 14,
+      "evidence": [
+        {
+          "ts": "2026-08-23T17:02:00Z",
+          "statement": "SELECT version();",
+          "rows": 1,
+          "duration_ms": 1.2
+        },
+        {
+          "ts": "2026-08-23T17:02:47Z",
+          "statement": "BEGIN;",
+          "rows": 0,
+          "duration_ms": 0.3
+        },
+        {
+          "ts": "2026-08-23T17:03:05Z",
+          "statement": "ALTER TABLE payments ADD COLUMN settlement_reference text;",
+          "rows": 0,
+          "duration_ms": 62.7
+        },
+        {
+          "ts": "2026-08-23T17:05:19Z",
+          "statement": "CREATE INDEX CONCURRENTLY idx_payments_invoice_no ON payments (invoice_no);",
+          "rows": 0,
+          "duration_ms": 91044.6
+        },
+        {
+          "ts": "2026-08-23T17:22:31Z",
+          "statement": "INSERT INTO audit_log (occurred_at, db_user, teleport_user, session_id, action, object_schema, object_name, row_count, statement_digest, client_addr) VALUES (now(), 'dba', 'svc.migration@eproc.test', '3ac5e118-9f42-4d6b-b077-2e91c4a60f58', 'MIGRATION', 'public', 'payments', 0, 'chg-2026-0917', '127.0.0.1');",
+          "rows": 1,
+          "duration_ms": 5.1
+        },
+        {
+          "ts": "2026-08-23T17:25:40Z",
+          "statement": "COMMIT;",
+          "rows": 0,
+          "duration_ms": 4.2
+        },
+        {
+          "ts": "2026-08-23T17:26:12Z",
+          "statement": "SELECT count(*) FROM payments WHERE settlement_reference IS NULL;",
+          "rows": 1,
+          "duration_ms": 210.3
+        }
+      ],
+      "attack_technique": ["T1078.004", "T1098"],
+      "affected_objects": ["public.payments", "public.audit_log"],
+      "baseline_context": {
+        "typical_daily_rows": 0,
+        "typical_hours_utc": "16:00-19:00 on scheduled release evenings",
+        "usual_source_ips": ["127.0.0.1"],
+        "note": "svc.migration is the CI release identity. It connects only from the migration runner on the database host itself and only during release windows. Every prior session has followed the same shape: version check, DDL inside a transaction, an audit_log MIGRATION marker carrying the change ticket, then a verification count."
+      },
+      "change_window": {
+        "ticket": "CHG-2026-0917",
+        "approved_by": "platform-cab@eproc.test",
+        "starts_at": "2026-08-23T17:00:00Z",
+        "ends_at": "2026-08-23T19:00:00Z"
+      },
+      "detector": {
+        "name": "pg-role-usage-monitor",
+        "version": "0.9.1",
+        "score": 0.61
+      }
+    }
+  ]
+}

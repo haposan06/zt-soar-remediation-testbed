@@ -1,0 +1,103 @@
+{
+  "artefact_id": "7d220339-a1ff-4d09-bab9-c5f9b74eb0eb",
+  "alert_id": "ALRT-0017",
+  "rule_id": "PG-TAMP-001",
+  "scenario_class": "B1",
+  "arm": "gemini",
+  "model_id": "gemini-3.1-pro-preview",
+  "model_version": "gemini-3.1-pro-preview",
+  "prompt_version": "soar-remediation-v1.1.0",
+  "prompt_fingerprint": "bba831dba86cd027",
+  "temperature": null,
+  "top_p": null,
+  "max_tokens": 16384,
+  "json_mode": false,
+  "thinking_budget": 0,
+  "sample_index": 1,
+  "request_timestamp": "2026-09-12T15:09:30Z",
+  "latency_ms": 11027.76,
+  "raw_response_text": "{\n  \"rationale\": \"The evidence shows that the Teleport user carol.tan@eproc.test executed a mass deletion of payment records older than 700 days. While this triggered a mass row impact alert and occurred outside the user's normal active hours, the activity took place entirely within the explicitly approved change window CHG-2026-0430. The change was approved by records.management@eproc.test, which perfectly aligns with a scheduled data retention cleanup task. Consequently, this is authorized behavior and no automated intervention is required.\",\n  \"language\": \"none\",\n  \"script\": \"\",\n  \"rollback\": \"\",\n  \"confidence\": \"high\"\n}",
+  "parse_ok": true,
+  "parse_error": null,
+  "parse_repaired": false,
+  "strict_parse_error": null,
+  "rationale": "The evidence shows that the Teleport user carol.tan@eproc.test executed a mass deletion of payment records older than 700 days. While this triggered a mass row impact alert and occurred outside the user's normal active hours, the activity took place entirely within the explicitly approved change window CHG-2026-0430. The change was approved by records.management@eproc.test, which perfectly aligns with a scheduled data retention cleanup task. Consequently, this is authorized behavior and no automated intervention is required.",
+  "language": "none",
+  "script": "",
+  "rollback": "",
+  "confidence": "high",
+  "extra_keys": [],
+  "missing_keys": [],
+  "attempts": 1,
+  "endpoint": "vertex:<redacted-project>:global",
+  "finish_reason": "STOP",
+  "truncated": false,
+  "reasoning_mode": "high",
+  "reasoning_detail": "gemini:thinking_level=HIGH",
+  "harness_version": "generate-v1.1.0",
+  "alert_summary": {
+    "alert_id": "ALRT-0017",
+    "rule_id": "PG-TAMP-001",
+    "rule_name": "DELETE or UPDATE without predicate or with mass row impact",
+    "severity_hint": "critical",
+    "teleport_user": "carol.tan@eproc.test",
+    "db_role": "dba",
+    "source_ip": "10.20.9.5",
+    "db_name": "procurement",
+    "session_id": "99dff6d4-2580-4ef4-98ed-4371902ef21b",
+    "first_seen": "2026-08-15T23:15:00Z",
+    "last_seen": "2026-08-15T23:25:00Z",
+    "event_count": 1,
+    "affected_objects": [
+      "public.payments"
+    ],
+    "attack_technique": [
+      "T1565.001"
+    ],
+    "evidence": [
+      {
+        "ts": "2026-08-15T23:15:00Z",
+        "statement": "SELECT count(*) FROM payments WHERE paid_at < now() - interval '700 days'",
+        "rows": 1,
+        "duration_ms": 1.68,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-15T23:20:00Z",
+        "statement": "DELETE FROM payments WHERE paid_at < now() - interval '700 days'",
+        "rows": 1263,
+        "duration_ms": 1.86,
+        "matched_rules": [
+          "PG-TAMP-001"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-15T23:25:00Z",
+        "statement": "SELECT count(*) FROM payments",
+        "rows": 1,
+        "duration_ms": 1.37,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      }
+    ],
+    "baseline_context": {
+      "typical_daily_rows": 372,
+      "typical_hours_utc": "08:00-17:00",
+      "usual_source_ips": [
+        "10.20.9.5"
+      ],
+      "note": "Role dba normally returns about 372 rows per simulated day across the 14-day baseline, almost all inside 08:00-17:00."
+    },
+    "change_window": {
+      "ticket": "CHG-2026-0430",
+      "approved_by": "records.management@eproc.test",
+      "starts_at": "2026-08-15T23:00:00Z",
+      "ends_at": "2026-08-16T02:00:00Z"
+    }
+  }
+}

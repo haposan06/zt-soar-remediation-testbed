@@ -1,0 +1,51 @@
+rule pg_exf_003_out_of_hours_paginated_bulk_read {
+
+  meta:
+    author         = "thesis-lab"
+    description    = "Sustained out-of-hours paginated bulk read: five or more paginated SELECT statements against sensitive procurement tables within one session, all executed outside the 08:00-16:00 simulated working window, cumulatively returning more than 10000 rows."
+    rule_id        = "PG-EXF-003"
+    rule_name      = "Sustained out-of-hours paginated bulk read"
+    scenario_class = "S1"
+    severity       = "High"
+    mitre_attack   = "T1213, T1030"
+    data_source    = "Teleport db.session.query, log type TELEPORT_ACCESS_PLANE, product TELEPORT_DB_AUDIT"
+
+  events:
+    // source scoping, verified against live TELEPORT_ACCESS_PLANE events (custom parser)
+    $e.metadata.log_type           = "TELEPORT_ACCESS_PLANE"
+    $e.metadata.product_name       = "TELEPORT_DB_AUDIT"
+    $e.metadata.vendor_name        = "TELEPORT"
+    $e.metadata.event_type         = "USER_RESOURCE_ACCESS"
+    $e.metadata.product_event_type = "db.session.query"
+
+    // rows_affected is a database-side enrichment. Teleport telemetry carries no
+    // row count, so this predicate is not evaluable from the proxy stream alone.
+
+    // statement text matches ^\s*select\b
+    re.regex($e.security_result.description, `(?i)^\s*select\b`)
+
+    // statement text is paginated (OFFSET or LIMIT)
+    re.regex($e.security_result.description, `(?i)\boffset\b|\blimit\b`)
+
+    // statement text matches the sensitive-table regex
+    re.regex($e.security_result.description, `(?i)(employees|vendors|payments|bids)`)
+
+    // outside the 08:00-16:59 working window, as UTC seconds of day
+    (
+      $e.metadata.event_timestamp.seconds % 86400 < 28800 or
+      $e.metadata.event_timestamp.seconds % 86400 >= 61200
+    )
+
+    // aggregation key
+    $session_id = $e.network.session_id
+
+  match:
+    $session_id over 1h
+
+  outcome:
+    $stmt_count = count($e.metadata.id)
+    $total_rows = sum(strings.to_int($e.additional.fields["rows_affected"]))
+
+  condition:
+    #e >= 5 and $total_rows > 10000
+}

@@ -1,0 +1,146 @@
+{
+  "artefact_id": "ac520310-8fac-410d-8873-e632cc9c5e27",
+  "alert_id": "ALRT-0015",
+  "rule_id": "PG-EXF-003",
+  "scenario_class": "S1",
+  "arm": "gemini",
+  "model_id": "gemini-3.1-pro-preview",
+  "model_version": "gemini-3.1-pro-preview",
+  "prompt_version": "soar-remediation-v1.1.0",
+  "prompt_fingerprint": "bba831dba86cd027",
+  "temperature": null,
+  "top_p": null,
+  "max_tokens": 16384,
+  "json_mode": false,
+  "thinking_budget": 0,
+  "sample_index": 1,
+  "request_timestamp": "2026-09-12T15:09:45Z",
+  "latency_ms": 20831.78,
+  "raw_response_text": "{\n  \"rationale\": \"Evidence shows Teleport user eve.contractor@eproc.test performing sustained, out-of-hours paginated reads followed by a bulk COPY extraction of 12,000 rows from the public.payments table. This includes sensitive bank_account_snapshot data and vastly exceeds their normal baseline of 3,947 rows per day. Locking the specific Teleport user immediately halts their access and prevents further exfiltration without disrupting legitimate reporting activities of other users sharing the analyst_ro database role.\",\n  \"language\": \"tsh\",\n  \"script\": \"tctl lock --user=eve.contractor@eproc.test --ttl=24h --message=\\\"ALRT-0015: Suspected data exfiltration via bulk COPY on payments\\\"\",\n  \"rollback\": \"IRREVERSIBLE: The tctl lock command generates a dynamic UUID lock name that cannot be statically known in advance. To remove the lock, run 'tctl get locks' to find the lock name for eve.contractor@eproc.test, then execute 'tctl rm lock/<lock-name>'.\",\n  \"confidence\": \"high\"\n}",
+  "parse_ok": true,
+  "parse_error": null,
+  "parse_repaired": false,
+  "strict_parse_error": null,
+  "rationale": "Evidence shows Teleport user eve.contractor@eproc.test performing sustained, out-of-hours paginated reads followed by a bulk COPY extraction of 12,000 rows from the public.payments table. This includes sensitive bank_account_snapshot data and vastly exceeds their normal baseline of 3,947 rows per day. Locking the specific Teleport user immediately halts their access and prevents further exfiltration without disrupting legitimate reporting activities of other users sharing the analyst_ro database role.",
+  "language": "tsh",
+  "script": "tctl lock --user=eve.contractor@eproc.test --ttl=24h --message=\"ALRT-0015: Suspected data exfiltration via bulk COPY on payments\"",
+  "rollback": "IRREVERSIBLE: The tctl lock command generates a dynamic UUID lock name that cannot be statically known in advance. To remove the lock, run 'tctl get locks' to find the lock name for eve.contractor@eproc.test, then execute 'tctl rm lock/<lock-name>'.",
+  "confidence": "high",
+  "extra_keys": [],
+  "missing_keys": [],
+  "attempts": 1,
+  "endpoint": "vertex:<redacted-project>:global",
+  "finish_reason": "STOP",
+  "truncated": false,
+  "reasoning_mode": "high",
+  "reasoning_detail": "gemini:thinking_level=HIGH",
+  "harness_version": "generate-v1.1.0",
+  "alert_summary": {
+    "alert_id": "ALRT-0015",
+    "rule_id": "PG-EXF-003",
+    "rule_name": "Sustained out-of-hours paginated bulk read",
+    "severity_hint": "high",
+    "teleport_user": "eve.contractor@eproc.test",
+    "db_role": "analyst_ro",
+    "source_ip": "10.20.7.88",
+    "db_name": "procurement",
+    "session_id": "5b3395db-e44b-479c-9b61-5c0761441e35",
+    "first_seen": "2026-08-14T01:15:00Z",
+    "last_seen": "2026-08-14T01:51:00Z",
+    "event_count": 5,
+    "affected_objects": [
+      "public.payments"
+    ],
+    "attack_technique": [
+      "T1213",
+      "T1030"
+    ],
+    "evidence": [
+      {
+        "ts": "2026-08-14T01:15:00Z",
+        "statement": "SELECT current_user, inet_client_addr()",
+        "rows": 1,
+        "duration_ms": 2.33,
+        "matched_rules": [],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-14T01:21:00Z",
+        "statement": "SELECT payment_id, contract_id, amount, bank_account_snapshot FROM payments ORDER BY payment_id LIMIT 2500 OFFSET 0",
+        "rows": 2500,
+        "duration_ms": 5.84,
+        "matched_rules": [
+          "PG-EXF-003"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-14T01:27:00Z",
+        "statement": "SELECT payment_id, contract_id, amount, bank_account_snapshot FROM payments ORDER BY payment_id LIMIT 2500 OFFSET 2500",
+        "rows": 2500,
+        "duration_ms": 5.08,
+        "matched_rules": [
+          "PG-EXF-003"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-14T01:33:00Z",
+        "statement": "SELECT payment_id, contract_id, amount, bank_account_snapshot FROM payments ORDER BY payment_id LIMIT 2500 OFFSET 5000",
+        "rows": 2500,
+        "duration_ms": 4.39,
+        "matched_rules": [
+          "PG-EXF-003"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-14T01:39:00Z",
+        "statement": "SELECT payment_id, contract_id, amount, bank_account_snapshot FROM payments ORDER BY payment_id LIMIT 2500 OFFSET 7500",
+        "rows": 2500,
+        "duration_ms": 5.22,
+        "matched_rules": [
+          "PG-EXF-003"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-14T01:45:00Z",
+        "statement": "SELECT payment_id, contract_id, amount, bank_account_snapshot FROM payments ORDER BY payment_id LIMIT 2500 OFFSET 10000",
+        "rows": 2000,
+        "duration_ms": 5.4,
+        "matched_rules": [
+          "PG-EXF-003"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-14T01:51:00Z",
+        "statement": "COPY (SELECT * FROM payments) TO STDOUT WITH CSV HEADER",
+        "rows": 12000,
+        "duration_ms": 36.34,
+        "matched_rules": [
+          "PG-EXF-002"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      }
+    ],
+    "baseline_context": {
+      "typical_daily_rows": 3947,
+      "typical_hours_utc": "08:00-17:00",
+      "usual_source_ips": [
+        "10.20.4.61",
+        "10.20.4.62"
+      ],
+      "note": "Role analyst_ro normally returns about 3947 rows per simulated day across the 14-day baseline, almost all inside 08:00-17:00."
+    },
+    "change_window": null
+  }
+}

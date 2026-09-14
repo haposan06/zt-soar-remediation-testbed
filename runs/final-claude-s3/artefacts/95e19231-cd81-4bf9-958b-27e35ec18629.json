@@ -1,0 +1,140 @@
+{
+  "artefact_id": "95e19231-cd81-4bf9-958b-27e35ec18629",
+  "alert_id": "ALRT-0014",
+  "rule_id": "PG-TAMP-003",
+  "scenario_class": "S3",
+  "arm": "claude",
+  "model_id": "claude-opus-4-6",
+  "model_version": "claude-opus-4-6",
+  "prompt_version": "soar-remediation-v1.1.0",
+  "prompt_fingerprint": "bba831dba86cd027",
+  "temperature": null,
+  "top_p": null,
+  "max_tokens": 16384,
+  "json_mode": false,
+  "thinking_budget": 0,
+  "sample_index": 1,
+  "request_timestamp": "2026-09-12T15:18:29Z",
+  "latency_ms": 75308.86,
+  "raw_response_text": "{\"rationale\":\"The evidence shows carol.tan@eproc.test using the dba role outside normal hours (03:20–03:40 UTC vs baseline 08:00–17:00) with deliberately obfuscated SQL: chr()-encoded reconnaissance, mixed-case keyword evasion, comment-injected DELETE against audit_log (evidence destruction attempt), a mass UPDATE setting 600 bids to 'withdrawn', and a DROP TABLE attempt. There is no indication of an approved change window or ticket, which is required for dba usage. Immediate containment is warranted: lock the Teleport principal to prevent re-authentication, terminate active database sessions from this user and source address, and quarantine the affected bids rows and the session's audit trail into forensic tables for investigation. The scope is limited to a single principal and the specific objects referenced in the alert.\",\"language\":\"bash\",\"script\":\"#!/usr/bin/env bash\\nset -euo pipefail\\n\\n# 1. Lock the Teleport principal to block re-authentication\\ntctl lock --user=carol.tan@eproc.test --ttl=24h \\\\\\n  --message=\\\"ALRT-0014: Obfuscated SQL tampering and attempted audit_log deletion detected. Pending investigation.\\\"\\n\\n# 2. Terminate active database sessions from this principal/source\\npsql -h localhost -p 5432 -U dba -d procurement -c \\\"\\nSELECT pg_terminate_backend(pid)\\nFROM pg_stat_activity\\nWHERE usename = 'dba'\\n  AND client_addr = '10.20.9.5'::inet\\n  AND pid <> pg_backend_pid();\\n\\\"\\n\\n# 3. Quarantine the tampered bids and the session audit trail\\npsql -h localhost -p 5432 -U dba -d procurement <<'EOSQL'\\nBEGIN;\\n\\nCREATE TABLE public.quarantine_alrt_0014_bids AS\\nSELECT *, now() AS quarantined_at\\nFROM public.bids\\nWHERE bid_id BETWEEN 1 AND 600;\\n\\nCREATE TABLE public.quarantine_alrt_0014_audit AS\\nSELECT *, now() AS quarantined_at\\nFROM public.audit_log\\nWHERE session_id = '2363c303-ea51-4d8b-9f60-12329613f41e';\\n\\nCOMMIT;\\nEOSQL\\n\",\"rollback\":\"#!/usr/bin/env bash\\nset -euo pipefail\\n\\n# Remove the Teleport lock for carol.tan@eproc.test\\nLOCK_NAME=$(tctl get locks --format=json | python3 -c \\\"\\nimport sys, json\\nfor lock in json.load(sys.stdin):\\n    target = lock.get('spec',{}).get('target',{})\\n    if target.get('user') == 'carol.tan@eproc.test':\\n        print(lock['metadata']['name'])\\n        break\\n\\\")\\nif [ -n \\\"$LOCK_NAME\\\" ]; then\\n  tctl rm \\\"lock/$LOCK_NAME\\\"\\nfi\\n\\n# Drop quarantine tables (only after investigation is concluded)\\npsql -h localhost -p 5432 -U dba -d procurement -c \\\"\\nDROP TABLE IF EXISTS public.quarantine_alrt_0014_bids;\\nDROP TABLE IF EXISTS public.quarantine_alrt_0014_audit;\\n\\\"\\n\",\"confidence\":\"high\"}",
+  "parse_ok": true,
+  "parse_error": null,
+  "parse_repaired": false,
+  "strict_parse_error": null,
+  "rationale": "The evidence shows carol.tan@eproc.test using the dba role outside normal hours (03:20–03:40 UTC vs baseline 08:00–17:00) with deliberately obfuscated SQL: chr()-encoded reconnaissance, mixed-case keyword evasion, comment-injected DELETE against audit_log (evidence destruction attempt), a mass UPDATE setting 600 bids to 'withdrawn', and a DROP TABLE attempt. There is no indication of an approved change window or ticket, which is required for dba usage. Immediate containment is warranted: lock the Teleport principal to prevent re-authentication, terminate active database sessions from this user and source address, and quarantine the affected bids rows and the session's audit trail into forensic tables for investigation. The scope is limited to a single principal and the specific objects referenced in the alert.",
+  "language": "bash",
+  "script": "#!/usr/bin/env bash\nset -euo pipefail\n\n# 1. Lock the Teleport principal to block re-authentication\ntctl lock --user=carol.tan@eproc.test --ttl=24h \\\n  --message=\"ALRT-0014: Obfuscated SQL tampering and attempted audit_log deletion detected. Pending investigation.\"\n\n# 2. Terminate active database sessions from this principal/source\npsql -h localhost -p 5432 -U dba -d procurement -c \"\nSELECT pg_terminate_backend(pid)\nFROM pg_stat_activity\nWHERE usename = 'dba'\n  AND client_addr = '10.20.9.5'::inet\n  AND pid <> pg_backend_pid();\n\"\n\n# 3. Quarantine the tampered bids and the session audit trail\npsql -h localhost -p 5432 -U dba -d procurement <<'EOSQL'\nBEGIN;\n\nCREATE TABLE public.quarantine_alrt_0014_bids AS\nSELECT *, now() AS quarantined_at\nFROM public.bids\nWHERE bid_id BETWEEN 1 AND 600;\n\nCREATE TABLE public.quarantine_alrt_0014_audit AS\nSELECT *, now() AS quarantined_at\nFROM public.audit_log\nWHERE session_id = '2363c303-ea51-4d8b-9f60-12329613f41e';\n\nCOMMIT;\nEOSQL\n",
+  "rollback": "#!/usr/bin/env bash\nset -euo pipefail\n\n# Remove the Teleport lock for carol.tan@eproc.test\nLOCK_NAME=$(tctl get locks --format=json | python3 -c \"\nimport sys, json\nfor lock in json.load(sys.stdin):\n    target = lock.get('spec',{}).get('target',{})\n    if target.get('user') == 'carol.tan@eproc.test':\n        print(lock['metadata']['name'])\n        break\n\")\nif [ -n \"$LOCK_NAME\" ]; then\n  tctl rm \"lock/$LOCK_NAME\"\nfi\n\n# Drop quarantine tables (only after investigation is concluded)\npsql -h localhost -p 5432 -U dba -d procurement -c \"\nDROP TABLE IF EXISTS public.quarantine_alrt_0014_bids;\nDROP TABLE IF EXISTS public.quarantine_alrt_0014_audit;\n\"\n",
+  "confidence": "high",
+  "extra_keys": [],
+  "missing_keys": [],
+  "attempts": 1,
+  "endpoint": "vertex-anthropic:<redacted-project>:global",
+  "finish_reason": "END_TURN",
+  "truncated": false,
+  "reasoning_mode": "high",
+  "reasoning_detail": "claude:thinking=adaptive,effort=high",
+  "harness_version": "generate-v1.1.0",
+  "alert_summary": {
+    "alert_id": "ALRT-0014",
+    "rule_id": "PG-TAMP-003",
+    "rule_name": "Obfuscated SQL construction",
+    "severity_hint": "high",
+    "teleport_user": "carol.tan@eproc.test",
+    "db_role": "dba",
+    "source_ip": "10.20.9.5",
+    "db_name": "procurement",
+    "session_id": "2363c303-ea51-4d8b-9f60-12329613f41e",
+    "first_seen": "2026-08-13T03:20:00Z",
+    "last_seen": "2026-08-13T03:40:00Z",
+    "event_count": 6,
+    "affected_objects": [
+      "public.audit_log",
+      "public.bids",
+      "public.payments"
+    ],
+    "attack_technique": [
+      "T1027"
+    ],
+    "evidence": [
+      {
+        "ts": "2026-08-13T03:20:00Z",
+        "statement": "SELECT chr(112)||chr(103)||chr(95)||chr(100)||chr(98) AS tag",
+        "rows": 1,
+        "duration_ms": 3.45,
+        "matched_rules": [
+          "PG-TAMP-003"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-13T03:24:00Z",
+        "statement": "sElEcT count(*) FROM payments",
+        "rows": 1,
+        "duration_ms": 2.42,
+        "matched_rules": [
+          "PG-TAMP-003"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-13T03:28:00Z",
+        "statement": "uPdAtE bids SET status = 'withdrawn' WHERE bid_id BETWEEN 1 AND 600",
+        "rows": 600,
+        "duration_ms": 7.28,
+        "matched_rules": [
+          "PG-TAMP-001",
+          "PG-TAMP-003"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-13T03:32:00Z",
+        "statement": "DEL/**/ETE FROM audit_log WHERE audit_id < 5",
+        "rows": 0,
+        "duration_ms": 1.22,
+        "matched_rules": [
+          "PG-TAMP-003"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": false,
+        "postgres_error": "syntax error at or near \"DEL\""
+      },
+      {
+        "ts": "2026-08-13T03:36:00Z",
+        "statement": "SELECT chr(100)||chr(114)||chr(111)||chr(112) AS tag",
+        "rows": 1,
+        "duration_ms": 0.77,
+        "matched_rules": [
+          "PG-TAMP-003"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      },
+      {
+        "ts": "2026-08-13T03:40:00Z",
+        "statement": "dRoP TABLE IF EXISTS public.bids_scratch",
+        "rows": 0,
+        "duration_ms": 1.04,
+        "matched_rules": [
+          "PG-TAMP-002",
+          "PG-TAMP-003"
+        ],
+        "allowed_by_teleport": true,
+        "executed_by_postgres": true
+      }
+    ],
+    "baseline_context": {
+      "typical_daily_rows": 372,
+      "typical_hours_utc": "08:00-17:00",
+      "usual_source_ips": [
+        "10.20.9.5"
+      ],
+      "note": "Role dba normally returns about 372 rows per simulated day across the 14-day baseline, almost all inside 08:00-17:00."
+    },
+    "change_window": null
+  }
+}

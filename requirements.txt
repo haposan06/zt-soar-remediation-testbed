@@ -1,0 +1,11 @@
+# Python 3.12 was used for the study. Install with
+#   python3 -m pip install -r requirements.txt
+google-genai>=2.22,<3
+anthropic[vertex]>=1.5,<2
+httpcore>=1.0.9
+pandas
+numpy
+scipy
+statsmodels
+scikit-learn
+matplotlib

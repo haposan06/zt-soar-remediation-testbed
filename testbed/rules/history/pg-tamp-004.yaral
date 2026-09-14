@@ -1,0 +1,30 @@
+rule pg_tamp_004_mass_update_sealed_bid_amounts {
+
+  meta:
+    author         = "thesis-lab"
+    description    = "Mass update of sealed bid amounts: an UPDATE against the bids table that sets bid_amount or technical_score and affects 50 or more rows, indicating wholesale manipulation of sealed tender evaluation data."
+    rule_id        = "PG-TAMP-004"
+    rule_name      = "Mass update of sealed bid amounts"
+    scenario_class = "S3"
+    severity       = "Critical"
+    mitre_attack   = "T1565.001"
+    data_source    = "Teleport db.session.query (TELEPORT_DB_AUDIT)"
+
+  events:
+    $e.metadata.event_type   = "GENERIC_EVENT"
+    $e.metadata.product_name = "Teleport"
+    $e.metadata.vendor_name  = "Gravitational"
+    $e.metadata.log_type     = "TELEPORT_DB_AUDIT"
+
+    // db_query matches ^\s*update (public.)?bids\b
+    re.regex($e.target.resource.attribute.labels["db_query"], `(?i)^\s*update\s+(public\.)?bids\b`)
+
+    // SET clause touches bid_amount or technical_score
+    re.regex($e.target.resource.attribute.labels["db_query"], `(?i)\bset\b.*\b(bid_amount|technical_score)\b`)
+
+    // 50 or more rows affected
+    strings.to_int($e.target.resource.attribute.labels["rows"]) >= 50
+
+  condition:
+    $e
+}

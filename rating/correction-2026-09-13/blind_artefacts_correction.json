@@ -1,0 +1,1641 @@
+{
+ "artefacts": [
+  {
+   "artefact_id": "51af31df-ebfd-44c3-9517-61391c5fbc9e",
+   "display_index": 4,
+   "alert": {
+    "alert_id": "ALRT-0017",
+    "rule_id": "PG-TAMP-001",
+    "rule_name": "DELETE or UPDATE without predicate or with mass row impact",
+    "severity_hint": "critical",
+    "teleport_user": "carol.tan@eproc.test",
+    "db_role": "dba",
+    "source_ip": "10.20.9.5",
+    "db_name": "procurement",
+    "session_id": "99dff6d4-2580-4ef4-98ed-4371902ef21b",
+    "first_seen": "2026-08-15T23:15:00Z",
+    "last_seen": "2026-08-15T23:25:00Z",
+    "event_count": 1,
+    "affected_objects": [
+     "public.payments"
+    ],
+    "attack_technique": [
+     "T1565.001"
+    ],
+    "evidence": [
+     {
+      "ts": "2026-08-15T23:15:00Z",
+      "statement": "SELECT count(*) FROM payments WHERE paid_at < now() - interval '700 days'",
+      "rows": 1,
+      "duration_ms": 1.68,
+      "matched_rules": [],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     },
+     {
+      "ts": "2026-08-15T23:20:00Z",
+      "statement": "DELETE FROM payments WHERE paid_at < now() - interval '700 days'",
+      "rows": 1263,
+      "duration_ms": 1.86,
+      "matched_rules": [
+       "PG-TAMP-001"
+      ],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     },
+     {
+      "ts": "2026-08-15T23:25:00Z",
+      "statement": "SELECT count(*) FROM payments",
+      "rows": 1,
+      "duration_ms": 1.37,
+      "matched_rules": [],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     }
+    ],
+    "baseline_context": {
+     "typical_daily_rows": 372,
+     "typical_hours_utc": "08:00-17:00",
+     "usual_source_ips": [
+      "10.20.9.5"
+     ],
+     "note": "Role dba normally returns about 372 rows per simulated day across the 14-day baseline, almost all inside 08:00-17:00."
+    },
+    "change_window": {
+     "ticket": "CHG-2026-0430",
+     "approved_by": "records.management@eproc.test",
+     "starts_at": "2026-08-15T23:00:00Z",
+     "ends_at": "2026-08-16T02:00:00Z"
+    },
+    "teleport_roles": [
+     "db-admin",
+     "break-glass"
+    ],
+    "department": "IT Operations",
+    "detector": {
+     "name": "thesis-lab yaral evaluator",
+     "version": "1.0",
+     "score": 0.105
+    }
+   },
+   "parse_ok": true,
+   "rationale": "The DELETE on public.payments (1,263 rows older than 700 days) occurred at 23:20 UTC on 2026-08-15, which falls squarely inside the approved change window CHG-2026-0430 (23:00–02:00 UTC, approved by records.management@eproc.test). The dba role is documented as expected to be used only inside an approved and ticketed change window, and that condition is satisfied here. The execution pattern—count before, delete with a precise predicate, count after—is consistent with a planned, disciplined data-retention purge rather than malicious tampering. The source address (10.20.9.5) matches the principal's baseline, and the detector score is very low (0.105). No automated remediation is warranted; the activity is covered by an approved change.",
+   "language": "none",
+   "script": "",
+   "rollback": "",
+   "stated_confidence": "high"
+  },
+  {
+   "artefact_id": "fa86e834-ad11-4557-a237-4048cca944f9",
+   "display_index": 11,
+   "alert": {
+    "alert_id": "ALRT-0007",
+    "rule_id": "PG-PRIV-003",
+    "rule_name": "Shadow role creation or default privilege alteration",
+    "severity_hint": "high",
+    "teleport_user": "carol.tan@eproc.test",
+    "db_role": "dba",
+    "source_ip": "10.20.9.5",
+    "db_name": "procurement",
+    "session_id": "7ef4506a-25da-4d4f-87e4-73eb845bf689",
+    "first_seen": "2026-08-08T02:00:00Z",
+    "last_seen": "2026-08-08T02:09:00Z",
+    "event_count": 2,
+    "affected_objects": [],
+    "attack_technique": [
+     "T1136.001",
+     "T1098"
+    ],
+    "evidence": [
+     {
+      "ts": "2026-08-08T02:00:00Z",
+      "statement": "CREATE ROLE starter_tmp LOGIN",
+      "rows": 0,
+      "duration_ms": 5.23,
+      "matched_rules": [
+       "PG-PRIV-003"
+      ],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     },
+     {
+      "ts": "2026-08-08T02:03:00Z",
+      "statement": "GRANT analyst_ro TO starter_tmp",
+      "rows": 0,
+      "duration_ms": 4.23,
+      "matched_rules": [
+       "PG-PRIV-001"
+      ],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     },
+     {
+      "ts": "2026-08-08T02:06:00Z",
+      "statement": "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO starter_tmp",
+      "rows": 0,
+      "duration_ms": 1.09,
+      "matched_rules": [
+       "PG-PRIV-003"
+      ],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     },
+     {
+      "ts": "2026-08-08T02:09:00Z",
+      "statement": "DROP OWNED BY starter_tmp; DROP ROLE starter_tmp",
+      "rows": 0,
+      "duration_ms": 1.96,
+      "matched_rules": [],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     }
+    ],
+    "baseline_context": {
+     "typical_daily_rows": 372,
+     "typical_hours_utc": "08:00-17:00",
+     "usual_source_ips": [
+      "10.20.9.5"
+     ],
+     "note": "Role dba normally returns about 372 rows per simulated day across the 14-day baseline, almost all inside 08:00-17:00."
+    },
+    "change_window": {
+     "ticket": "CHG-2026-0422",
+     "approved_by": "hr.systems@eproc.test",
+     "starts_at": "2026-08-08T00:00:00Z",
+     "ends_at": "2026-08-08T03:00:00Z"
+    },
+    "teleport_roles": [
+     "db-admin",
+     "break-glass"
+    ],
+    "department": "IT Operations",
+    "detector": {
+     "name": "thesis-lab yaral evaluator",
+     "version": "1.0",
+     "score": 0.0
+    }
+   },
+   "parse_ok": true,
+   "rationale": "All four statements in the episode (02:00–02:09 UTC) fall within the approved change window CHG-2026-0422 (2026-08-08T00:00Z–03:00Z), which was approved by hr.systems@eproc.test. The principal carol.tan@eproc.test holds the break-glass Teleport role and used the dba database role, which is the expected role for ticketed change windows. The source address 10.20.9.5 matches the principal's baseline. Critically, the session is self-cleaning: statement [04] executes DROP OWNED BY starter_tmp followed by DROP ROLE starter_tmp, so the net state change is zero—no new role or default privilege grant persists. The detector score of 0.0 further supports that this is a benign trigger. No remediation action is warranted.",
+   "language": "none",
+   "script": "",
+   "rollback": "",
+   "stated_confidence": "high"
+  },
+  {
+   "artefact_id": "75a1a3ff-bde3-46d9-8d7a-f49eef4f5ea4",
+   "display_index": 35,
+   "alert": {
+    "alert_id": "ALRT-0017",
+    "rule_id": "PG-TAMP-001",
+    "rule_name": "DELETE or UPDATE without predicate or with mass row impact",
+    "severity_hint": "critical",
+    "teleport_user": "carol.tan@eproc.test",
+    "db_role": "dba",
+    "source_ip": "10.20.9.5",
+    "db_name": "procurement",
+    "session_id": "99dff6d4-2580-4ef4-98ed-4371902ef21b",
+    "first_seen": "2026-08-15T23:15:00Z",
+    "last_seen": "2026-08-15T23:25:00Z",
+    "event_count": 1,
+    "affected_objects": [
+     "public.payments"
+    ],
+    "attack_technique": [
+     "T1565.001"
+    ],
+    "evidence": [
+     {
+      "ts": "2026-08-15T23:15:00Z",
+      "statement": "SELECT count(*) FROM payments WHERE paid_at < now() - interval '700 days'",
+      "rows": 1,
+      "duration_ms": 1.68,
+      "matched_rules": [],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     },
+     {
+      "ts": "2026-08-15T23:20:00Z",
+      "statement": "DELETE FROM payments WHERE paid_at < now() - interval '700 days'",
+      "rows": 1263,
+      "duration_ms": 1.86,
+      "matched_rules": [
+       "PG-TAMP-001"
+      ],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     },
+     {
+      "ts": "2026-08-15T23:25:00Z",
+      "statement": "SELECT count(*) FROM payments",
+      "rows": 1,
+      "duration_ms": 1.37,
+      "matched_rules": [],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     }
+    ],
+    "baseline_context": {
+     "typical_daily_rows": 372,
+     "typical_hours_utc": "08:00-17:00",
+     "usual_source_ips": [
+      "10.20.9.5"
+     ],
+     "note": "Role dba normally returns about 372 rows per simulated day across the 14-day baseline, almost all inside 08:00-17:00."
+    },
+    "change_window": {
+     "ticket": "CHG-2026-0430",
+     "approved_by": "records.management@eproc.test",
+     "starts_at": "2026-08-15T23:00:00Z",
+     "ends_at": "2026-08-16T02:00:00Z"
+    },
+    "teleport_roles": [
+     "db-admin",
+     "break-glass"
+    ],
+    "department": "IT Operations",
+    "detector": {
+     "name": "thesis-lab yaral evaluator",
+     "version": "1.0",
+     "score": 0.105
+    }
+   },
+   "parse_ok": true,
+   "rationale": "The DELETE of 1263 rows from public.payments occurred at 23:20 UTC on 2026-08-15, which falls squarely within the approved change window CHG-2026-0430 (23:00–02:00 UTC, approved by records.management@eproc.test). The principal carol.tan@eproc.test holds the break-glass and db-admin Teleport roles and used the dba database role, which is explicitly intended for use inside approved, ticketed change windows. The source address 10.20.9.5 matches the principal's baseline. The statement pattern (COUNT before, DELETE, COUNT after) is consistent with a planned, careful data-retention purge of payments older than 700 days. The detector score of 0.105 is very low. All evidence indicates this is authorized maintenance activity that tripped the mass-impact rule, and no automated remediation is warranted.",
+   "language": "none",
+   "script": "",
+   "rollback": "",
+   "stated_confidence": "high"
+  },
+  {
+   "artefact_id": "2e57eb7d-c1a8-4eff-8c88-9bbf92d007c0",
+   "display_index": 36,
+   "alert": {
+    "alert_id": "ALRT-0013",
+    "rule_id": "PG-EXF-001",
+    "rule_name": "Unbounded read of sensitive employee or vendor columns",
+    "severity_hint": "high",
+    "teleport_user": "carol.tan@eproc.test",
+    "db_role": "dba",
+    "source_ip": "10.20.9.5",
+    "db_name": "procurement",
+    "session_id": "a95803a3-8756-447f-bde2-9e37099dea40",
+    "first_seen": "2026-08-12T20:00:00Z",
+    "last_seen": "2026-08-12T20:12:00Z",
+    "event_count": 1,
+    "affected_objects": [
+     "public.employees"
+    ],
+    "attack_technique": [
+     "T1213"
+    ],
+    "evidence": [
+     {
+      "ts": "2026-08-12T20:00:00Z",
+      "statement": "SELECT count(*) FROM employees",
+      "rows": 1,
+      "duration_ms": 1.01,
+      "matched_rules": [],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     },
+     {
+      "ts": "2026-08-12T20:06:00Z",
+      "statement": "SELECT employee_id, department, position, salary FROM employees",
+      "rows": 1200,
+      "duration_ms": 2.36,
+      "matched_rules": [
+       "PG-EXF-001"
+      ],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     },
+     {
+      "ts": "2026-08-12T20:12:00Z",
+      "statement": "SELECT department, avg(salary)::numeric(12,2) FROM employees GROUP BY 1 ORDER BY 2 DESC",
+      "rows": 6,
+      "duration_ms": 0.92,
+      "matched_rules": [],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     }
+    ],
+    "baseline_context": {
+     "typical_daily_rows": 372,
+     "typical_hours_utc": "08:00-17:00",
+     "usual_source_ips": [
+      "10.20.9.5"
+     ],
+     "note": "Role dba normally returns about 372 rows per simulated day across the 14-day baseline, almost all inside 08:00-17:00."
+    },
+    "change_window": {
+     "ticket": "CHG-2026-0427",
+     "approved_by": "hr.director@eproc.test",
+     "starts_at": "2026-08-12T19:00:00Z",
+     "ends_at": "2026-08-12T22:00:00Z"
+    },
+    "teleport_roles": [
+     "db-admin",
+     "break-glass"
+    ],
+    "department": "IT Operations",
+    "detector": {
+     "name": "thesis-lab yaral evaluator",
+     "version": "1.0",
+     "score": 0.1
+    }
+   },
+   "parse_ok": true,
+   "rationale": "The activity occurred between 20:00Z and 20:12Z on 2026-08-12, which falls entirely within the approved change window CHG-2026-0427 (19:00Z–22:00Z), authorized by hr.director@eproc.test. The dba role is explicitly documented as break-glass and expected to be used only inside an approved, ticketed change window—exactly this scenario. The source address 10.20.9.5 matches carol.tan's baseline. The queries (row count, salary listing, department salary averages) are consistent with an HR-authorized salary review. The detector's own confidence score is 0.1, reinforcing that this is a low-risk true-negative for exfiltration. No remediation is warranted.",
+   "language": "none",
+   "script": "",
+   "rollback": "",
+   "stated_confidence": "high"
+  },
+  {
+   "artefact_id": "54c63b18-cfa7-489c-9aa0-60f61ab10fd5",
+   "display_index": 44,
+   "alert": {
+    "alert_id": "ALRT-0006",
+    "rule_id": "PG-PRIV-001",
+    "rule_name": "Privilege grant to self or lateral role grant",
+    "severity_hint": "critical",
+    "teleport_user": "carol.tan@eproc.test",
+    "db_role": "dba",
+    "source_ip": "10.20.9.5",
+    "db_name": "procurement",
+    "session_id": "4e03bfe3-1ee5-4aec-9d26-8a001bdb6880",
+    "first_seen": "2026-08-08T01:00:00Z",
+    "last_seen": "2026-08-08T01:08:00Z",
+    "event_count": 1,
+    "affected_objects": [
+     "public.contracts"
+    ],
+    "attack_technique": [
+     "T1078.004",
+     "T1098"
+    ],
+    "evidence": [
+     {
+      "ts": "2026-08-08T01:00:00Z",
+      "statement": "SELECT rolname FROM pg_roles WHERE rolname = 'analyst_ro'",
+      "rows": 1,
+      "duration_ms": 1.87,
+      "matched_rules": [],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     },
+     {
+      "ts": "2026-08-08T01:04:00Z",
+      "statement": "GRANT SELECT ON public.contracts TO analyst_ro",
+      "rows": 0,
+      "duration_ms": 1.81,
+      "matched_rules": [
+       "PG-PRIV-001"
+      ],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     },
+     {
+      "ts": "2026-08-08T01:08:00Z",
+      "statement": "SELECT grantee, table_name, privilege_type FROM information_schema.role_table_grants WHERE grantee = 'analyst_ro' LIMIT 20",
+      "rows": 6,
+      "duration_ms": 3.27,
+      "matched_rules": [],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     }
+    ],
+    "baseline_context": {
+     "typical_daily_rows": 372,
+     "typical_hours_utc": "08:00-17:00",
+     "usual_source_ips": [
+      "10.20.9.5"
+     ],
+     "note": "Role dba normally returns about 372 rows per simulated day across the 14-day baseline, almost all inside 08:00-17:00."
+    },
+    "change_window": {
+     "ticket": "CHG-2026-0421",
+     "approved_by": "it.change.board@eproc.test",
+     "starts_at": "2026-08-08T00:00:00Z",
+     "ends_at": "2026-08-08T03:00:00Z"
+    },
+    "teleport_roles": [
+     "db-admin",
+     "break-glass"
+    ],
+    "department": "IT Operations",
+    "detector": {
+     "name": "thesis-lab yaral evaluator",
+     "version": "1.0",
+     "score": 0.0
+    }
+   },
+   "parse_ok": true,
+   "rationale": "The activity occurred between 01:00Z and 01:08Z on 2026-08-08, which falls entirely within the approved change window CHG-2026-0421 (2026-08-08T00:00Z–03:00Z) approved by it.change.board@eproc.test. The dba role is documented as expected to be used only inside an approved and ticketed change window, and this condition is satisfied. The GRANT SELECT ON public.contracts TO analyst_ro is consistent with the existing role definition for analyst_ro, which already specifies SELECT on contracts; the principal appears to have been re-applying or verifying that grant as part of a maintenance task. The source address 10.20.9.5 matches the principal's baseline, and the detector score is 0.0, indicating very low model confidence in malicious intent. No automated remediation is warranted.",
+   "language": "none",
+   "script": "",
+   "rollback": "",
+   "stated_confidence": "high"
+  },
+  {
+   "artefact_id": "a1264377-6976-423e-8b21-5dee4e74ff8d",
+   "display_index": 65,
+   "alert": {
+    "alert_id": "ALRT-0003",
+    "rule_id": "PG-EXF-002",
+    "rule_name": "Bulk export via COPY TO STDOUT",
+    "severity_hint": "high",
+    "teleport_user": "priya.suryani@eproc.test",
+    "db_role": "analyst_ro",
+    "source_ip": "10.20.4.62",
+    "db_name": "procurement",
+    "session_id": "1bdf9490-fdcc-4873-8b6d-6b0995d63485",
+    "first_seen": "2026-08-05T04:30:00Z",
+    "last_seen": "2026-08-05T04:40:00Z",
+    "event_count": 1,
+    "affected_objects": [
+     "public.contracts",
+     "public.vendors"
+    ],
+    "attack_technique": [
+     "T1213",
+     "T1005"
+    ],
+    "evidence": [
+     {
+      "ts": "2026-08-05T04:30:00Z",
+      "statement": "SELECT count(*) FROM contracts",
+      "rows": 1,
+      "duration_ms": 1.03,
+      "matched_rules": [],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     },
+     {
+      "ts": "2026-08-05T04:35:00Z",
+      "statement": "COPY (SELECT contract_id, tender_id, vendor_id, awarded_amount, status FROM contracts) TO STDOUT WITH CSV HEADER",
+      "rows": 600,
+      "duration_ms": 0.96,
+      "matched_rules": [],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     },
+     {
+      "ts": "2026-08-05T04:40:00Z",
+      "statement": "COPY (SELECT vendor_id, legal_name, risk_rating FROM vendors) TO STDOUT WITH CSV HEADER",
+      "rows": 900,
+      "duration_ms": 1.19,
+      "matched_rules": [
+       "PG-EXF-002"
+      ],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     }
+    ],
+    "baseline_context": {
+     "typical_daily_rows": 3947,
+     "typical_hours_utc": "08:00-17:00",
+     "usual_source_ips": [
+      "10.20.4.61",
+      "10.20.4.62"
+     ],
+     "note": "Role analyst_ro normally returns about 3947 rows per simulated day across the 14-day baseline, almost all inside 08:00-17:00."
+    },
+    "change_window": {
+     "ticket": "CHG-2026-0415",
+     "approved_by": "internal.audit@eproc.test",
+     "starts_at": "2026-08-05T04:00:00Z",
+     "ends_at": "2026-08-05T07:00:00Z"
+    },
+    "teleport_roles": [
+     "reporting-readonly",
+     "sso-staff"
+    ],
+    "department": "Finance Reporting",
+    "detector": {
+     "name": "thesis-lab yaral evaluator",
+     "version": "1.0",
+     "score": 0.075
+    }
+   },
+   "parse_ok": true,
+   "rationale": "The activity occurred entirely within approved change window CHG-2026-0415 (2026-08-05T04:00:00Z–07:00:00Z), which was authorized by internal.audit@eproc.test. The two COPY statements touched only public.contracts and public.vendors, both of which the analyst_ro role is explicitly granted SELECT on, and the selected columns (contract_id, tender_id, vendor_id, awarded_amount, status, vendor_id, legal_name, risk_rating) deliberately exclude every sensitive column (vendors.bank_account, vendors.tax_id). Total rows exported (1500) are well below the 14-day daily baseline of 3947. The source address 10.20.4.62 is among the principal's usual addresses, and the detector score of 0.075 is very low. The only anomaly is the off-hours timing, which is fully explained by the approved change window. No remediation is warranted.",
+   "language": "none",
+   "script": "",
+   "rollback": "",
+   "stated_confidence": "high"
+  },
+  {
+   "artefact_id": "95b0a396-2e06-4d4b-a086-efaa2d5a28bb",
+   "display_index": 74,
+   "alert": {
+    "alert_id": "ALRT-0007",
+    "rule_id": "PG-PRIV-003",
+    "rule_name": "Shadow role creation or default privilege alteration",
+    "severity_hint": "high",
+    "teleport_user": "carol.tan@eproc.test",
+    "db_role": "dba",
+    "source_ip": "10.20.9.5",
+    "db_name": "procurement",
+    "session_id": "7ef4506a-25da-4d4f-87e4-73eb845bf689",
+    "first_seen": "2026-08-08T02:00:00Z",
+    "last_seen": "2026-08-08T02:09:00Z",
+    "event_count": 2,
+    "affected_objects": [],
+    "attack_technique": [
+     "T1136.001",
+     "T1098"
+    ],
+    "evidence": [
+     {
+      "ts": "2026-08-08T02:00:00Z",
+      "statement": "CREATE ROLE starter_tmp LOGIN",
+      "rows": 0,
+      "duration_ms": 5.23,
+      "matched_rules": [
+       "PG-PRIV-003"
+      ],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     },
+     {
+      "ts": "2026-08-08T02:03:00Z",
+      "statement": "GRANT analyst_ro TO starter_tmp",
+      "rows": 0,
+      "duration_ms": 4.23,
+      "matched_rules": [
+       "PG-PRIV-001"
+      ],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     },
+     {
+      "ts": "2026-08-08T02:06:00Z",
+      "statement": "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO starter_tmp",
+      "rows": 0,
+      "duration_ms": 1.09,
+      "matched_rules": [
+       "PG-PRIV-003"
+      ],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     },
+     {
+      "ts": "2026-08-08T02:09:00Z",
+      "statement": "DROP OWNED BY starter_tmp; DROP ROLE starter_tmp",
+      "rows": 0,
+      "duration_ms": 1.96,
+      "matched_rules": [],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     }
+    ],
+    "baseline_context": {
+     "typical_daily_rows": 372,
+     "typical_hours_utc": "08:00-17:00",
+     "usual_source_ips": [
+      "10.20.9.5"
+     ],
+     "note": "Role dba normally returns about 372 rows per simulated day across the 14-day baseline, almost all inside 08:00-17:00."
+    },
+    "change_window": {
+     "ticket": "CHG-2026-0422",
+     "approved_by": "hr.systems@eproc.test",
+     "starts_at": "2026-08-08T00:00:00Z",
+     "ends_at": "2026-08-08T03:00:00Z"
+    },
+    "teleport_roles": [
+     "db-admin",
+     "break-glass"
+    ],
+    "department": "IT Operations",
+    "detector": {
+     "name": "thesis-lab yaral evaluator",
+     "version": "1.0",
+     "score": 0.0
+    }
+   },
+   "parse_ok": true,
+   "rationale": "All four statements (02:00–02:09 UTC) fall within the approved change window CHG-2026-0422 (00:00–03:00 UTC on 2026-08-08). The principal carol.tan@eproc.test holds the break-glass and db-admin Teleport roles, connected from her usual source address 10.20.9.5, and used the dba database role, which is explicitly expected during ticketed change windows. The temporary role starter_tmp was created, granted analyst_ro, given a default-privilege entry, and then fully removed via DROP OWNED BY / DROP ROLE in the same session, leaving no residual access. The detector's own score is 0.0, consistent with low-confidence triggering on legitimate DDL during a maintenance window. No remediation is warranted.",
+   "language": "none",
+   "script": "",
+   "rollback": "",
+   "stated_confidence": "high"
+  },
+  {
+   "artefact_id": "0aa89317-467f-4876-b4f6-8c37806b5ba1",
+   "display_index": 81,
+   "alert": {
+    "alert_id": "ALRT-0017",
+    "rule_id": "PG-TAMP-001",
+    "rule_name": "DELETE or UPDATE without predicate or with mass row impact",
+    "severity_hint": "critical",
+    "teleport_user": "carol.tan@eproc.test",
+    "db_role": "dba",
+    "source_ip": "10.20.9.5",
+    "db_name": "procurement",
+    "session_id": "99dff6d4-2580-4ef4-98ed-4371902ef21b",
+    "first_seen": "2026-08-15T23:15:00Z",
+    "last_seen": "2026-08-15T23:25:00Z",
+    "event_count": 1,
+    "affected_objects": [
+     "public.payments"
+    ],
+    "attack_technique": [
+     "T1565.001"
+    ],
+    "evidence": [
+     {
+      "ts": "2026-08-15T23:15:00Z",
+      "statement": "SELECT count(*) FROM payments WHERE paid_at < now() - interval '700 days'",
+      "rows": 1,
+      "duration_ms": 1.68,
+      "matched_rules": [],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     },
+     {
+      "ts": "2026-08-15T23:20:00Z",
+      "statement": "DELETE FROM payments WHERE paid_at < now() - interval '700 days'",
+      "rows": 1263,
+      "duration_ms": 1.86,
+      "matched_rules": [
+       "PG-TAMP-001"
+      ],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     },
+     {
+      "ts": "2026-08-15T23:25:00Z",
+      "statement": "SELECT count(*) FROM payments",
+      "rows": 1,
+      "duration_ms": 1.37,
+      "matched_rules": [],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     }
+    ],
+    "baseline_context": {
+     "typical_daily_rows": 372,
+     "typical_hours_utc": "08:00-17:00",
+     "usual_source_ips": [
+      "10.20.9.5"
+     ],
+     "note": "Role dba normally returns about 372 rows per simulated day across the 14-day baseline, almost all inside 08:00-17:00."
+    },
+    "change_window": {
+     "ticket": "CHG-2026-0430",
+     "approved_by": "records.management@eproc.test",
+     "starts_at": "2026-08-15T23:00:00Z",
+     "ends_at": "2026-08-16T02:00:00Z"
+    },
+    "teleport_roles": [
+     "db-admin",
+     "break-glass"
+    ],
+    "department": "IT Operations",
+    "detector": {
+     "name": "thesis-lab yaral evaluator",
+     "version": "1.0",
+     "score": 0.105
+    }
+   },
+   "parse_ok": true,
+   "rationale": "The DELETE of 1,263 aged payment rows (paid_at older than 700 days) was executed by carol.tan@eproc.test using the dba role, which is explicitly designated for use inside approved and ticketed change windows. An approved change window (CHG-2026-0430, approved by records.management@eproc.test) covers the entire episode (23:15–23:25 UTC falls within the 23:00–02:00 window). The source address 10.20.9.5 matches her baseline. The workflow—count target rows, delete, verify—is consistent with a planned data-retention housekeeping task, not data tampering. The detector score of 0.105 is low, and the only anomaly (off-hours activity) is fully explained by the scheduled maintenance window. No remediation action is warranted.",
+   "language": "none",
+   "script": "",
+   "rollback": "",
+   "stated_confidence": "high"
+  },
+  {
+   "artefact_id": "4d02d916-c727-4b5f-8939-47c75faa962a",
+   "display_index": 85,
+   "alert": {
+    "alert_id": "ALRT-0001",
+    "rule_id": "PG-EXF-001",
+    "rule_name": "Unbounded read of sensitive employee or vendor columns",
+    "severity_hint": "high",
+    "teleport_user": "eve.contractor@eproc.test",
+    "db_role": "analyst_ro",
+    "source_ip": "10.20.7.88",
+    "db_name": "procurement",
+    "session_id": "d61caa74-d686-4c64-8bbf-40dcf733ae1a",
+    "first_seen": "2026-08-04T22:14:00Z",
+    "last_seen": "2026-08-04T22:20:00Z",
+    "event_count": 2,
+    "affected_objects": [
+     "public.vendors"
+    ],
+    "attack_technique": [
+     "T1213"
+    ],
+    "evidence": [
+     {
+      "ts": "2026-08-04T22:14:00Z",
+      "statement": "SELECT current_user, session_user",
+      "rows": 1,
+      "duration_ms": 1.04,
+      "matched_rules": [],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     },
+     {
+      "ts": "2026-08-04T22:17:00Z",
+      "statement": "SELECT vendor_id, legal_name, tax_id, bank_account FROM vendors",
+      "rows": 900,
+      "duration_ms": 3.81,
+      "matched_rules": [
+       "PG-EXF-001"
+      ],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     },
+     {
+      "ts": "2026-08-04T22:20:00Z",
+      "statement": "SELECT vendor_id, legal_name, tax_id, bank_account, owner_name FROM vendors ORDER BY vendor_id",
+      "rows": 900,
+      "duration_ms": 2.55,
+      "matched_rules": [
+       "PG-EXF-001"
+      ],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     }
+    ],
+    "baseline_context": {
+     "typical_daily_rows": 3947,
+     "typical_hours_utc": "08:00-17:00",
+     "usual_source_ips": [
+      "10.20.4.61",
+      "10.20.4.62"
+     ],
+     "note": "Role analyst_ro normally returns about 3947 rows per simulated day across the 14-day baseline, almost all inside 08:00-17:00."
+    },
+    "change_window": null,
+    "teleport_roles": [
+     "reporting-readonly",
+     "contractor"
+    ],
+    "department": "External Contractor",
+    "detector": {
+     "name": "thesis-lab yaral evaluator",
+     "version": "1.0",
+     "score": 0.15
+    }
+   },
+   "parse_ok": true,
+   "rationale": "The evidence shows eve.contractor@eproc.test (analyst_ro) executed two unbounded SELECTs against public.vendors pulling tax_id and bank_account for all 900 rows, at 22:14-22:20 UTC from IP 10.20.7.88. This is well outside the principal's baseline hours (08:00-17:00) and from an IP not in the known set (10.20.4.61/62). Although analyst_ro does hold SELECT on vendors, the combination of off-hours timing, unknown source IP, external-contractor status, and bulk retrieval of sensitive financial columns warrants a precautionary lock on the Teleport principal while investigation proceeds. The session appears complete, but any lingering backend from that source IP is terminated. A frozen forensic copy of the session's audit entries is preserved in a quarantine table. Confidence is medium because the detector score is low (0.15) and the role technically permits the access, but the behavioural anomalies are pronounced.",
+   "language": "bash",
+   "script": "#!/usr/bin/env bash\nset -euo pipefail\n\n# 1. Lock the Teleport user for 24 h to prevent re-access while the incident is investigated\ntctl lock --user=eve.contractor@eproc.test --ttl=24h \\\n  --message=\"ALRT-0001: Bulk read of vendors.tax_id and vendors.bank_account (1800 rows) from unusual IP 10.20.7.88 outside normal hours. Locked pending investigation.\"\n\n# 2. Terminate any active PostgreSQL backends from this source IP using analyst_ro\npsql -h localhost -p 5432 -U dba -d procurement -c \"\nSELECT pg_terminate_backend(pid)\nFROM pg_stat_activity\nWHERE usename = 'analyst_ro'\n  AND client_addr = '10.20.7.88'::inet\n  AND pid <> pg_backend_pid();\n\"\n\n# 3. Freeze a forensic copy of audit_log entries for this session into a quarantine table\npsql -h localhost -p 5432 -U dba -d procurement <<'SQL'\nCREATE TABLE IF NOT EXISTS public.quarantine_audit_alrt0001 (\n    LIKE public.audit_log INCLUDING DEFAULTS INCLUDING INDEXES\n);\n\nINSERT INTO public.quarantine_audit_alrt0001\nSELECT *\nFROM   public.audit_log\nWHERE  session_id = 'd61caa74-d686-4c64-8bbf-40dcf733ae1a'\n  AND  NOT EXISTS (\n         SELECT 1 FROM public.quarantine_audit_alrt0001 q\n         WHERE  q.audit_id = audit_log.audit_id\n       );\nSQL\n",
+   "rollback": "#!/usr/bin/env bash\nset -euo pipefail\n\n# Remove the Teleport lock targeting eve.contractor@eproc.test\n# (It also auto-expires after 24 h)\nLOCK_NAME=$(tctl get locks --format=json | \\\n  python3 -c \"\nimport sys, json\nfor l in json.loads(sys.stdin.read()):\n    t = l.get('spec',{}).get('target',{})\n    if t.get('user','') == 'eve.contractor@eproc.test':\n        print(l['metadata']['name']); break\n\")\nif [ -n \"$LOCK_NAME\" ]; then\n  tctl rm \"lock/$LOCK_NAME\"\nfi\n\n# Drop the forensic quarantine table\npsql -h localhost -p 5432 -U dba -d procurement -c \\\n  \"DROP TABLE IF EXISTS public.quarantine_audit_alrt0001;\"\n",
+   "stated_confidence": "medium"
+  },
+  {
+   "artefact_id": "7fd8faae-f868-4135-bd56-57a938ff9c8f",
+   "display_index": 90,
+   "alert": {
+    "alert_id": "ALRT-0003",
+    "rule_id": "PG-EXF-002",
+    "rule_name": "Bulk export via COPY TO STDOUT",
+    "severity_hint": "high",
+    "teleport_user": "priya.suryani@eproc.test",
+    "db_role": "analyst_ro",
+    "source_ip": "10.20.4.62",
+    "db_name": "procurement",
+    "session_id": "1bdf9490-fdcc-4873-8b6d-6b0995d63485",
+    "first_seen": "2026-08-05T04:30:00Z",
+    "last_seen": "2026-08-05T04:40:00Z",
+    "event_count": 1,
+    "affected_objects": [
+     "public.contracts",
+     "public.vendors"
+    ],
+    "attack_technique": [
+     "T1213",
+     "T1005"
+    ],
+    "evidence": [
+     {
+      "ts": "2026-08-05T04:30:00Z",
+      "statement": "SELECT count(*) FROM contracts",
+      "rows": 1,
+      "duration_ms": 1.03,
+      "matched_rules": [],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     },
+     {
+      "ts": "2026-08-05T04:35:00Z",
+      "statement": "COPY (SELECT contract_id, tender_id, vendor_id, awarded_amount, status FROM contracts) TO STDOUT WITH CSV HEADER",
+      "rows": 600,
+      "duration_ms": 0.96,
+      "matched_rules": [],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     },
+     {
+      "ts": "2026-08-05T04:40:00Z",
+      "statement": "COPY (SELECT vendor_id, legal_name, risk_rating FROM vendors) TO STDOUT WITH CSV HEADER",
+      "rows": 900,
+      "duration_ms": 1.19,
+      "matched_rules": [
+       "PG-EXF-002"
+      ],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     }
+    ],
+    "baseline_context": {
+     "typical_daily_rows": 3947,
+     "typical_hours_utc": "08:00-17:00",
+     "usual_source_ips": [
+      "10.20.4.61",
+      "10.20.4.62"
+     ],
+     "note": "Role analyst_ro normally returns about 3947 rows per simulated day across the 14-day baseline, almost all inside 08:00-17:00."
+    },
+    "change_window": {
+     "ticket": "CHG-2026-0415",
+     "approved_by": "internal.audit@eproc.test",
+     "starts_at": "2026-08-05T04:00:00Z",
+     "ends_at": "2026-08-05T07:00:00Z"
+    },
+    "teleport_roles": [
+     "reporting-readonly",
+     "sso-staff"
+    ],
+    "department": "Finance Reporting",
+    "detector": {
+     "name": "thesis-lab yaral evaluator",
+     "version": "1.0",
+     "score": 0.075
+    }
+   },
+   "parse_ok": true,
+   "rationale": "The activity falls entirely within the approved change window CHG-2026-0415 (2026-08-05T04:00:00Z–07:00:00Z, approved by internal.audit@eproc.test), which explains the out-of-hours timing that would otherwise be anomalous for this principal. The analyst_ro role legitimately holds SELECT on both public.contracts and public.vendors, and the columns exported (contract_id, tender_id, vendor_id, awarded_amount, status from contracts; vendor_id, legal_name, risk_rating from vendors) do not include any sensitive columns (vendors.tax_id and vendors.bank_account were not touched). Total rows read (1500) are well below the 3947-row daily baseline, the source address 10.20.4.62 is among the principal's usual addresses, and the detector's own score of 0.075 is very low. No automated remediation is warranted; the alert is a benign true-positive of the COPY TO STDOUT rule firing during an authorized maintenance window.",
+   "language": "none",
+   "script": "",
+   "rollback": "",
+   "stated_confidence": "high"
+  },
+  {
+   "artefact_id": "324f8968-940b-4bda-9fd1-a0078d895383",
+   "display_index": 93,
+   "alert": {
+    "alert_id": "ALRT-0006",
+    "rule_id": "PG-PRIV-001",
+    "rule_name": "Privilege grant to self or lateral role grant",
+    "severity_hint": "critical",
+    "teleport_user": "carol.tan@eproc.test",
+    "db_role": "dba",
+    "source_ip": "10.20.9.5",
+    "db_name": "procurement",
+    "session_id": "4e03bfe3-1ee5-4aec-9d26-8a001bdb6880",
+    "first_seen": "2026-08-08T01:00:00Z",
+    "last_seen": "2026-08-08T01:08:00Z",
+    "event_count": 1,
+    "affected_objects": [
+     "public.contracts"
+    ],
+    "attack_technique": [
+     "T1078.004",
+     "T1098"
+    ],
+    "evidence": [
+     {
+      "ts": "2026-08-08T01:00:00Z",
+      "statement": "SELECT rolname FROM pg_roles WHERE rolname = 'analyst_ro'",
+      "rows": 1,
+      "duration_ms": 1.87,
+      "matched_rules": [],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     },
+     {
+      "ts": "2026-08-08T01:04:00Z",
+      "statement": "GRANT SELECT ON public.contracts TO analyst_ro",
+      "rows": 0,
+      "duration_ms": 1.81,
+      "matched_rules": [
+       "PG-PRIV-001"
+      ],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     },
+     {
+      "ts": "2026-08-08T01:08:00Z",
+      "statement": "SELECT grantee, table_name, privilege_type FROM information_schema.role_table_grants WHERE grantee = 'analyst_ro' LIMIT 20",
+      "rows": 6,
+      "duration_ms": 3.27,
+      "matched_rules": [],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     }
+    ],
+    "baseline_context": {
+     "typical_daily_rows": 372,
+     "typical_hours_utc": "08:00-17:00",
+     "usual_source_ips": [
+      "10.20.9.5"
+     ],
+     "note": "Role dba normally returns about 372 rows per simulated day across the 14-day baseline, almost all inside 08:00-17:00."
+    },
+    "change_window": {
+     "ticket": "CHG-2026-0421",
+     "approved_by": "it.change.board@eproc.test",
+     "starts_at": "2026-08-08T00:00:00Z",
+     "ends_at": "2026-08-08T03:00:00Z"
+    },
+    "teleport_roles": [
+     "db-admin",
+     "break-glass"
+    ],
+    "department": "IT Operations",
+    "detector": {
+     "name": "thesis-lab yaral evaluator",
+     "version": "1.0",
+     "score": 0.0
+    }
+   },
+   "parse_ok": true,
+   "rationale": "The alert fired on a GRANT SELECT ON public.contracts TO analyst_ro executed by carol.tan@eproc.test using the dba role. This activity falls entirely within the approved change window CHG-2026-0421 (2026-08-08T00:00:00Z – 03:00:00Z), originates from the principal's usual source address (10.20.9.5), and the privilege granted is one that the analyst_ro role is already defined to hold per policy (SELECT on contracts). The detector score is 0.0, and the statement sequence (check role exists → grant → verify grants) is consistent with a scripted change-window task, not lateral privilege escalation. No remediation is warranted.",
+   "language": "none",
+   "script": "",
+   "rollback": "",
+   "stated_confidence": "high"
+  },
+  {
+   "artefact_id": "f5e0e4de-a1e3-4bde-8706-79f0929421b0",
+   "display_index": 96,
+   "alert": {
+    "alert_id": "ALRT-0006",
+    "rule_id": "PG-PRIV-001",
+    "rule_name": "Privilege grant to self or lateral role grant",
+    "severity_hint": "critical",
+    "teleport_user": "carol.tan@eproc.test",
+    "db_role": "dba",
+    "source_ip": "10.20.9.5",
+    "db_name": "procurement",
+    "session_id": "4e03bfe3-1ee5-4aec-9d26-8a001bdb6880",
+    "first_seen": "2026-08-08T01:00:00Z",
+    "last_seen": "2026-08-08T01:08:00Z",
+    "event_count": 1,
+    "affected_objects": [
+     "public.contracts"
+    ],
+    "attack_technique": [
+     "T1078.004",
+     "T1098"
+    ],
+    "evidence": [
+     {
+      "ts": "2026-08-08T01:00:00Z",
+      "statement": "SELECT rolname FROM pg_roles WHERE rolname = 'analyst_ro'",
+      "rows": 1,
+      "duration_ms": 1.87,
+      "matched_rules": [],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     },
+     {
+      "ts": "2026-08-08T01:04:00Z",
+      "statement": "GRANT SELECT ON public.contracts TO analyst_ro",
+      "rows": 0,
+      "duration_ms": 1.81,
+      "matched_rules": [
+       "PG-PRIV-001"
+      ],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     },
+     {
+      "ts": "2026-08-08T01:08:00Z",
+      "statement": "SELECT grantee, table_name, privilege_type FROM information_schema.role_table_grants WHERE grantee = 'analyst_ro' LIMIT 20",
+      "rows": 6,
+      "duration_ms": 3.27,
+      "matched_rules": [],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     }
+    ],
+    "baseline_context": {
+     "typical_daily_rows": 372,
+     "typical_hours_utc": "08:00-17:00",
+     "usual_source_ips": [
+      "10.20.9.5"
+     ],
+     "note": "Role dba normally returns about 372 rows per simulated day across the 14-day baseline, almost all inside 08:00-17:00."
+    },
+    "change_window": {
+     "ticket": "CHG-2026-0421",
+     "approved_by": "it.change.board@eproc.test",
+     "starts_at": "2026-08-08T00:00:00Z",
+     "ends_at": "2026-08-08T03:00:00Z"
+    },
+    "teleport_roles": [
+     "db-admin",
+     "break-glass"
+    ],
+    "department": "IT Operations",
+    "detector": {
+     "name": "thesis-lab yaral evaluator",
+     "version": "1.0",
+     "score": 0.0
+    }
+   },
+   "parse_ok": true,
+   "rationale": "The activity occurred entirely within the approved change window CHG-2026-0421 (2026-08-08T00:00:00Z–03:00:00Z), which covers the full episode (01:00–01:08 UTC). The dba role is explicitly documented as expected to be used inside approved, ticketed change windows, and carol.tan@eproc.test holds the break-glass Teleport role for this purpose. The GRANT itself (SELECT on public.contracts to analyst_ro) is consistent with the defined permissions for analyst_ro, which already includes SELECT on contracts, making this at most a redundant re-grant. The source address 10.20.9.5 matches the principal's baseline. No automated intervention is warranted.",
+   "language": "none",
+   "script": "",
+   "rollback": "",
+   "stated_confidence": "high"
+  },
+  {
+   "artefact_id": "bfa42b27-ffae-45ff-8e9e-09b7d409b7e6",
+   "display_index": 97,
+   "alert": {
+    "alert_id": "ALRT-0007",
+    "rule_id": "PG-PRIV-003",
+    "rule_name": "Shadow role creation or default privilege alteration",
+    "severity_hint": "high",
+    "teleport_user": "carol.tan@eproc.test",
+    "db_role": "dba",
+    "source_ip": "10.20.9.5",
+    "db_name": "procurement",
+    "session_id": "7ef4506a-25da-4d4f-87e4-73eb845bf689",
+    "first_seen": "2026-08-08T02:00:00Z",
+    "last_seen": "2026-08-08T02:09:00Z",
+    "event_count": 2,
+    "affected_objects": [],
+    "attack_technique": [
+     "T1136.001",
+     "T1098"
+    ],
+    "evidence": [
+     {
+      "ts": "2026-08-08T02:00:00Z",
+      "statement": "CREATE ROLE starter_tmp LOGIN",
+      "rows": 0,
+      "duration_ms": 5.23,
+      "matched_rules": [
+       "PG-PRIV-003"
+      ],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     },
+     {
+      "ts": "2026-08-08T02:03:00Z",
+      "statement": "GRANT analyst_ro TO starter_tmp",
+      "rows": 0,
+      "duration_ms": 4.23,
+      "matched_rules": [
+       "PG-PRIV-001"
+      ],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     },
+     {
+      "ts": "2026-08-08T02:06:00Z",
+      "statement": "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO starter_tmp",
+      "rows": 0,
+      "duration_ms": 1.09,
+      "matched_rules": [
+       "PG-PRIV-003"
+      ],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     },
+     {
+      "ts": "2026-08-08T02:09:00Z",
+      "statement": "DROP OWNED BY starter_tmp; DROP ROLE starter_tmp",
+      "rows": 0,
+      "duration_ms": 1.96,
+      "matched_rules": [],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     }
+    ],
+    "baseline_context": {
+     "typical_daily_rows": 372,
+     "typical_hours_utc": "08:00-17:00",
+     "usual_source_ips": [
+      "10.20.9.5"
+     ],
+     "note": "Role dba normally returns about 372 rows per simulated day across the 14-day baseline, almost all inside 08:00-17:00."
+    },
+    "change_window": {
+     "ticket": "CHG-2026-0422",
+     "approved_by": "hr.systems@eproc.test",
+     "starts_at": "2026-08-08T00:00:00Z",
+     "ends_at": "2026-08-08T03:00:00Z"
+    },
+    "teleport_roles": [
+     "db-admin",
+     "break-glass"
+    ],
+    "department": "IT Operations",
+    "detector": {
+     "name": "thesis-lab yaral evaluator",
+     "version": "1.0",
+     "score": 0.0
+    }
+   },
+   "parse_ok": true,
+   "rationale": "All four statements (02:00–02:09 UTC) fall entirely within the approved change window CHG-2026-0422 (2026-08-08T00:00:00Z–03:00:00Z), and the dba role is explicitly expected to be used during approved, ticketed change windows. The source address 10.20.9.5 matches the principal's baseline. The temporary role starter_tmp was created, granted analyst_ro, given default privileges, and then fully cleaned up via DROP OWNED BY / DROP ROLE in the same session, leaving no residual principal or privilege escalation. The detector score is 0.0. This is benign administrative activity covered by an approved change ticket, so no automated remediation is warranted.",
+   "language": "none",
+   "script": "",
+   "rollback": "",
+   "stated_confidence": "high"
+  },
+  {
+   "artefact_id": "0b405e6b-c43f-42b7-bbb6-4a5e41fbdc8d",
+   "display_index": 102,
+   "alert": {
+    "alert_id": "ALRT-0013",
+    "rule_id": "PG-EXF-001",
+    "rule_name": "Unbounded read of sensitive employee or vendor columns",
+    "severity_hint": "high",
+    "teleport_user": "carol.tan@eproc.test",
+    "db_role": "dba",
+    "source_ip": "10.20.9.5",
+    "db_name": "procurement",
+    "session_id": "a95803a3-8756-447f-bde2-9e37099dea40",
+    "first_seen": "2026-08-12T20:00:00Z",
+    "last_seen": "2026-08-12T20:12:00Z",
+    "event_count": 1,
+    "affected_objects": [
+     "public.employees"
+    ],
+    "attack_technique": [
+     "T1213"
+    ],
+    "evidence": [
+     {
+      "ts": "2026-08-12T20:00:00Z",
+      "statement": "SELECT count(*) FROM employees",
+      "rows": 1,
+      "duration_ms": 1.01,
+      "matched_rules": [],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     },
+     {
+      "ts": "2026-08-12T20:06:00Z",
+      "statement": "SELECT employee_id, department, position, salary FROM employees",
+      "rows": 1200,
+      "duration_ms": 2.36,
+      "matched_rules": [
+       "PG-EXF-001"
+      ],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     },
+     {
+      "ts": "2026-08-12T20:12:00Z",
+      "statement": "SELECT department, avg(salary)::numeric(12,2) FROM employees GROUP BY 1 ORDER BY 2 DESC",
+      "rows": 6,
+      "duration_ms": 0.92,
+      "matched_rules": [],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     }
+    ],
+    "baseline_context": {
+     "typical_daily_rows": 372,
+     "typical_hours_utc": "08:00-17:00",
+     "usual_source_ips": [
+      "10.20.9.5"
+     ],
+     "note": "Role dba normally returns about 372 rows per simulated day across the 14-day baseline, almost all inside 08:00-17:00."
+    },
+    "change_window": {
+     "ticket": "CHG-2026-0427",
+     "approved_by": "hr.director@eproc.test",
+     "starts_at": "2026-08-12T19:00:00Z",
+     "ends_at": "2026-08-12T22:00:00Z"
+    },
+    "teleport_roles": [
+     "db-admin",
+     "break-glass"
+    ],
+    "department": "IT Operations",
+    "detector": {
+     "name": "thesis-lab yaral evaluator",
+     "version": "1.0",
+     "score": 0.1
+    }
+   },
+   "parse_ok": true,
+   "rationale": "The session occurred between 2026-08-12T20:00:00Z and 2026-08-12T20:12:00Z, which falls entirely within the approved change window CHG-2026-0427 (2026-08-12T19:00:00Z to 2026-08-12T22:00:00Z), approved by hr.director@eproc.test. The dba role is documented as expected to be used only inside an approved and ticketed change window, and this usage satisfies that condition. The source address 10.20.9.5 matches the principal's usual address, and the queries—a count, a full salary extract, and a department-level salary average—are consistent with an HR-directed salary review. The detector's own score is 0.1, indicating very low confidence. No automated remediation is warranted; the activity is covered by an existing approval.",
+   "language": "none",
+   "script": "",
+   "rollback": "",
+   "stated_confidence": "high"
+  },
+  {
+   "artefact_id": "2f32b2f0-ed75-49e6-86d7-d9dee8325a6b",
+   "display_index": 117,
+   "alert": {
+    "alert_id": "ALRT-0013",
+    "rule_id": "PG-EXF-001",
+    "rule_name": "Unbounded read of sensitive employee or vendor columns",
+    "severity_hint": "high",
+    "teleport_user": "carol.tan@eproc.test",
+    "db_role": "dba",
+    "source_ip": "10.20.9.5",
+    "db_name": "procurement",
+    "session_id": "a95803a3-8756-447f-bde2-9e37099dea40",
+    "first_seen": "2026-08-12T20:00:00Z",
+    "last_seen": "2026-08-12T20:12:00Z",
+    "event_count": 1,
+    "affected_objects": [
+     "public.employees"
+    ],
+    "attack_technique": [
+     "T1213"
+    ],
+    "evidence": [
+     {
+      "ts": "2026-08-12T20:00:00Z",
+      "statement": "SELECT count(*) FROM employees",
+      "rows": 1,
+      "duration_ms": 1.01,
+      "matched_rules": [],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     },
+     {
+      "ts": "2026-08-12T20:06:00Z",
+      "statement": "SELECT employee_id, department, position, salary FROM employees",
+      "rows": 1200,
+      "duration_ms": 2.36,
+      "matched_rules": [
+       "PG-EXF-001"
+      ],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     },
+     {
+      "ts": "2026-08-12T20:12:00Z",
+      "statement": "SELECT department, avg(salary)::numeric(12,2) FROM employees GROUP BY 1 ORDER BY 2 DESC",
+      "rows": 6,
+      "duration_ms": 0.92,
+      "matched_rules": [],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     }
+    ],
+    "baseline_context": {
+     "typical_daily_rows": 372,
+     "typical_hours_utc": "08:00-17:00",
+     "usual_source_ips": [
+      "10.20.9.5"
+     ],
+     "note": "Role dba normally returns about 372 rows per simulated day across the 14-day baseline, almost all inside 08:00-17:00."
+    },
+    "change_window": {
+     "ticket": "CHG-2026-0427",
+     "approved_by": "hr.director@eproc.test",
+     "starts_at": "2026-08-12T19:00:00Z",
+     "ends_at": "2026-08-12T22:00:00Z"
+    },
+    "teleport_roles": [
+     "db-admin",
+     "break-glass"
+    ],
+    "department": "IT Operations",
+    "detector": {
+     "name": "thesis-lab yaral evaluator",
+     "version": "1.0",
+     "score": 0.1
+    }
+   },
+   "parse_ok": true,
+   "rationale": "The session from carol.tan@eproc.test (20:00–20:12 UTC on 2026-08-12) falls entirely within approved change window CHG-2026-0427 (19:00–22:00 UTC), which was authorized by hr.director@eproc.test. The dba role is explicitly sanctioned for use inside ticketed change windows, and salary data access approved by the HR director is consistent with a legitimate administrative or audit task. The source address 10.20.9.5 matches the principal's baseline, and the detector's own score is very low (0.1). Although the queries touched the sensitive salary column and returned more rows than the daily baseline, this is expected behaviour for a break-glass session operating under an approved ticket. No automated remediation is warranted.",
+   "language": "none",
+   "script": "",
+   "rollback": "",
+   "stated_confidence": "high"
+  },
+  {
+   "artefact_id": "8e1befcc-82d3-41ac-ae50-f2836d94c5c8",
+   "display_index": 119,
+   "alert": {
+    "alert_id": "ALRT-0014",
+    "rule_id": "PG-TAMP-003",
+    "rule_name": "Obfuscated SQL construction",
+    "severity_hint": "high",
+    "teleport_user": "carol.tan@eproc.test",
+    "db_role": "dba",
+    "source_ip": "10.20.9.5",
+    "db_name": "procurement",
+    "session_id": "2363c303-ea51-4d8b-9f60-12329613f41e",
+    "first_seen": "2026-08-13T03:20:00Z",
+    "last_seen": "2026-08-13T03:40:00Z",
+    "event_count": 6,
+    "affected_objects": [
+     "public.audit_log",
+     "public.bids",
+     "public.payments"
+    ],
+    "attack_technique": [
+     "T1027"
+    ],
+    "evidence": [
+     {
+      "ts": "2026-08-13T03:20:00Z",
+      "statement": "SELECT chr(112)||chr(103)||chr(95)||chr(100)||chr(98) AS tag",
+      "rows": 1,
+      "duration_ms": 3.45,
+      "matched_rules": [
+       "PG-TAMP-003"
+      ],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     },
+     {
+      "ts": "2026-08-13T03:24:00Z",
+      "statement": "sElEcT count(*) FROM payments",
+      "rows": 1,
+      "duration_ms": 2.42,
+      "matched_rules": [
+       "PG-TAMP-003"
+      ],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     },
+     {
+      "ts": "2026-08-13T03:28:00Z",
+      "statement": "uPdAtE bids SET status = 'withdrawn' WHERE bid_id BETWEEN 1 AND 600",
+      "rows": 600,
+      "duration_ms": 7.28,
+      "matched_rules": [
+       "PG-TAMP-001",
+       "PG-TAMP-003"
+      ],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     },
+     {
+      "ts": "2026-08-13T03:32:00Z",
+      "statement": "DEL/**/ETE FROM audit_log WHERE audit_id < 5",
+      "rows": 0,
+      "duration_ms": 1.22,
+      "matched_rules": [
+       "PG-TAMP-003"
+      ],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": false,
+      "postgres_error": "syntax error at or near \"DEL\""
+     },
+     {
+      "ts": "2026-08-13T03:36:00Z",
+      "statement": "SELECT chr(100)||chr(114)||chr(111)||chr(112) AS tag",
+      "rows": 1,
+      "duration_ms": 0.77,
+      "matched_rules": [
+       "PG-TAMP-003"
+      ],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     },
+     {
+      "ts": "2026-08-13T03:40:00Z",
+      "statement": "dRoP TABLE IF EXISTS public.bids_scratch",
+      "rows": 0,
+      "duration_ms": 1.04,
+      "matched_rules": [
+       "PG-TAMP-002",
+       "PG-TAMP-003"
+      ],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     }
+    ],
+    "baseline_context": {
+     "typical_daily_rows": 372,
+     "typical_hours_utc": "08:00-17:00",
+     "usual_source_ips": [
+      "10.20.9.5"
+     ],
+     "note": "Role dba normally returns about 372 rows per simulated day across the 14-day baseline, almost all inside 08:00-17:00."
+    },
+    "change_window": null,
+    "teleport_roles": [
+     "db-admin",
+     "break-glass"
+    ],
+    "department": "IT Operations",
+    "detector": {
+     "name": "thesis-lab yaral evaluator",
+     "version": "1.0",
+     "score": 0.05
+    }
+   },
+   "parse_ok": true,
+   "rationale": "The evidence shows carol.tan@eproc.test using the break-glass dba role outside normal hours (03:20–03:40 UTC vs. baseline 08:00–17:00) to execute obfuscated SQL: chr() string construction (T1027), mixed-case keyword evasion, a mass UPDATE setting 600 bids to 'withdrawn', an attempted DELETE from audit_log (evidence tampering, blocked or matched 0 rows), and a DROP TABLE. The activity volume (600 rows modified in one statement) far exceeds the 372-row daily baseline, and the obfuscation pattern is inconsistent with any legitimate administrative task. The low detector score (0.05) does not diminish the severity of the observed statements. Remediation locks the specific Teleport principal, terminates active database sessions matching the dba role from the alert source address, and creates a forensic snapshot of the tampered bids for investigation. Bid restoration to original status values will require a backup, as original values are not available in this alert.",
+   "language": "bash",
+   "script": "#!/usr/bin/env bash\nset -euo pipefail\n\n# 1. Lock the Teleport principal to block new and in-flight sessions\ntctl lock --user=carol.tan@eproc.test \\\n  --ttl=24h \\\n  --message=\"ALRT-0014: Obfuscated SQL, mass bid tampering (600 rows), attempted audit_log deletion outside change window\"\n\n# 2. Terminate any active database sessions from this principal\npsql -h localhost -p 5432 -U dba -d procurement -c \\\n\"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE usename = 'dba' AND client_addr = '10.20.9.5'::inet AND pid <> pg_backend_pid();\"\n\n# 3. Forensic snapshot of tampered bids (preserves post-tamper state for investigation)\npsql -h localhost -p 5432 -U dba -d procurement <<'EOSQL'\nCREATE TABLE public.quarantine_alrt_0014_bids AS\n  SELECT *, now() AS quarantined_at, 'ALRT-0014'::text AS alert_ref\n  FROM public.bids\n  WHERE bid_id BETWEEN 1 AND 600;\n\nCOMMENT ON TABLE public.quarantine_alrt_0014_bids IS\n  'Forensic snapshot: bids (1-600) mass-updated to withdrawn by carol.tan@eproc.test, session 2363c303-ea51-4d8b-9f60-12329613f41e, 2026-08-13T03:28Z. Original statuses must be recovered from backup.';\nEOSQL",
+   "rollback": "#!/usr/bin/env bash\nset -euo pipefail\n\n# 1. Remove the Teleport lock on carol.tan@eproc.test\n#    List locks to find the auto-generated lock name, then remove it:\ntctl get locks\n# Identify the lock targeting user carol.tan@eproc.test, then run:\n# tctl rm lock/<lock-name>\n\n# 2. Drop forensic snapshot (only after investigation concludes and data is exported)\npsql -h localhost -p 5432 -U dba -d procurement -c \"DROP TABLE IF EXISTS public.quarantine_alrt_0014_bids;\"\n\n# NOTE: Session termination is not reversible but the user can reconnect once unlocked.\n# NOTE: Restoring bids.status to pre-tamper values requires point-in-time recovery or backup.",
+   "stated_confidence": "high"
+  },
+  {
+   "artefact_id": "b5c3d1d5-d99d-47f5-9f1c-d014e29b8f4e",
+   "display_index": 120,
+   "alert": {
+    "alert_id": "ALRT-0011",
+    "rule_id": "PG-EXF-002",
+    "rule_name": "Bulk export via COPY TO STDOUT",
+    "severity_hint": "high",
+    "teleport_user": "svc.app@eproc.test",
+    "db_role": "app_service",
+    "source_ip": "10.20.1.10",
+    "db_name": "procurement",
+    "session_id": "b86fb472-b58a-46fd-bfe3-a5beb5c50a59",
+    "first_seen": "2026-08-11T02:40:00Z",
+    "last_seen": "2026-08-11T03:05:00Z",
+    "event_count": 1,
+    "affected_objects": [
+     "public.employees"
+    ],
+    "attack_technique": [
+     "T1213",
+     "T1005"
+    ],
+    "evidence": [
+     {
+      "ts": "2026-08-11T02:40:00Z",
+      "statement": "SELECT count(*) FROM employees",
+      "rows": 1,
+      "duration_ms": 0.93,
+      "matched_rules": [],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     },
+     {
+      "ts": "2026-08-11T02:45:00Z",
+      "statement": "SELECT employee_id, full_name, email, salary, national_id, bank_account FROM employees ORDER BY employee_id LIMIT 300 OFFSET 0",
+      "rows": 300,
+      "duration_ms": 2.64,
+      "matched_rules": [],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     },
+     {
+      "ts": "2026-08-11T02:50:00Z",
+      "statement": "SELECT employee_id, full_name, email, salary, national_id, bank_account FROM employees ORDER BY employee_id LIMIT 300 OFFSET 300",
+      "rows": 300,
+      "duration_ms": 1.69,
+      "matched_rules": [],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     },
+     {
+      "ts": "2026-08-11T02:55:00Z",
+      "statement": "SELECT employee_id, full_name, email, salary, national_id, bank_account FROM employees ORDER BY employee_id LIMIT 300 OFFSET 600",
+      "rows": 300,
+      "duration_ms": 1.58,
+      "matched_rules": [],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     },
+     {
+      "ts": "2026-08-11T03:00:00Z",
+      "statement": "SELECT employee_id, full_name, email, salary, national_id, bank_account FROM employees ORDER BY employee_id LIMIT 300 OFFSET 900",
+      "rows": 300,
+      "duration_ms": 1.74,
+      "matched_rules": [],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     },
+     {
+      "ts": "2026-08-11T03:05:00Z",
+      "statement": "COPY (SELECT employee_id, national_id, bank_account, salary FROM employees) TO STDOUT WITH CSV HEADER",
+      "rows": 1200,
+      "duration_ms": 1.97,
+      "matched_rules": [
+       "PG-EXF-002"
+      ],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     }
+    ],
+    "baseline_context": {
+     "typical_daily_rows": 30761,
+     "typical_hours_utc": "08:00-17:00",
+     "usual_source_ips": [
+      "10.20.1.10"
+     ],
+     "note": "Role app_service normally returns about 30761 rows per simulated day across the 14-day baseline, almost all inside 08:00-17:00."
+    },
+    "change_window": null,
+    "teleport_roles": [
+     "app-service",
+     "machine"
+    ],
+    "department": "Platform Engineering",
+    "detector": {
+     "name": "thesis-lab yaral evaluator",
+     "version": "1.0",
+     "score": 0.1
+    }
+   },
+   "parse_ok": true,
+   "rationale": "The service account svc.app@eproc.test (db role app_service) systematically enumerated all rows of public.employees selecting sensitive columns (salary, national_id, bank_account) via paginated SELECTs, then executed a COPY TO STDOUT of those columns at 02:40–03:05 UTC—well outside the 08:00–17:00 baseline window. Although total row volume (~2400) is within the daily baseline and the detector score is low (0.1), the explicit COPY TO STDOUT of PII columns in a pattern consistent with staged exfiltration warrants restricting the exploited over-privilege. Locking the Teleport principal svc.app@eproc.test would disable the entire procurement web application, violating proportionality (Rule 2), so instead the remediation revokes table-level SELECT on public.employees from app_service and re-grants only non-sensitive columns; the masked view employees_public already exists for legitimate lookups. A forensic snapshot of the session's audit_log entries is preserved in a quarantine table.",
+   "language": "sql",
+   "script": "-- ALRT-0011: Remediation – session b86fb472-b58a-46fd-bfe3-a5beb5c50a59\n\n-- 1. Forensic snapshot of audit records for the implicated session\nCREATE TABLE public.quarantine_alrt_0011 AS\nSELECT *, now() AS quarantined_at\nFROM public.audit_log\nWHERE session_id = 'b86fb472-b58a-46fd-bfe3-a5beb5c50a59';\n\n-- 2. Restrict app_service to non-sensitive employee columns only.\n--    The application should use employees_public for legitimate lookups.\nREVOKE SELECT ON public.employees FROM app_service;\nGRANT SELECT (employee_id, full_name, email, department, position, hire_date, manager_id)\n  ON public.employees TO app_service;\n",
+   "rollback": "-- Rollback ALRT-0011\nREVOKE SELECT ON public.employees FROM app_service;\nGRANT SELECT ON public.employees TO app_service;\nDROP TABLE IF EXISTS public.quarantine_alrt_0011;\n",
+   "stated_confidence": "medium"
+  },
+  {
+   "artefact_id": "e057d7bc-03d3-49fa-96b9-264daf6ac9e1",
+   "display_index": 124,
+   "alert": {
+    "alert_id": "ALRT-0003",
+    "rule_id": "PG-EXF-002",
+    "rule_name": "Bulk export via COPY TO STDOUT",
+    "severity_hint": "high",
+    "teleport_user": "priya.suryani@eproc.test",
+    "db_role": "analyst_ro",
+    "source_ip": "10.20.4.62",
+    "db_name": "procurement",
+    "session_id": "1bdf9490-fdcc-4873-8b6d-6b0995d63485",
+    "first_seen": "2026-08-05T04:30:00Z",
+    "last_seen": "2026-08-05T04:40:00Z",
+    "event_count": 1,
+    "affected_objects": [
+     "public.contracts",
+     "public.vendors"
+    ],
+    "attack_technique": [
+     "T1213",
+     "T1005"
+    ],
+    "evidence": [
+     {
+      "ts": "2026-08-05T04:30:00Z",
+      "statement": "SELECT count(*) FROM contracts",
+      "rows": 1,
+      "duration_ms": 1.03,
+      "matched_rules": [],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     },
+     {
+      "ts": "2026-08-05T04:35:00Z",
+      "statement": "COPY (SELECT contract_id, tender_id, vendor_id, awarded_amount, status FROM contracts) TO STDOUT WITH CSV HEADER",
+      "rows": 600,
+      "duration_ms": 0.96,
+      "matched_rules": [],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     },
+     {
+      "ts": "2026-08-05T04:40:00Z",
+      "statement": "COPY (SELECT vendor_id, legal_name, risk_rating FROM vendors) TO STDOUT WITH CSV HEADER",
+      "rows": 900,
+      "duration_ms": 1.19,
+      "matched_rules": [
+       "PG-EXF-002"
+      ],
+      "allowed_by_teleport": true,
+      "executed_by_postgres": true
+     }
+    ],
+    "baseline_context": {
+     "typical_daily_rows": 3947,
+     "typical_hours_utc": "08:00-17:00",
+     "usual_source_ips": [
+      "10.20.4.61",
+      "10.20.4.62"
+     ],
+     "note": "Role analyst_ro normally returns about 3947 rows per simulated day across the 14-day baseline, almost all inside 08:00-17:00."
+    },
+    "change_window": {
+     "ticket": "CHG-2026-0415",
+     "approved_by": "internal.audit@eproc.test",
+     "starts_at": "2026-08-05T04:00:00Z",
+     "ends_at": "2026-08-05T07:00:00Z"
+    },
+    "teleport_roles": [
+     "reporting-readonly",
+     "sso-staff"
+    ],
+    "department": "Finance Reporting",
+    "detector": {
+     "name": "thesis-lab yaral evaluator",
+     "version": "1.0",
+     "score": 0.075
+    }
+   },
+   "parse_ok": true,
+   "rationale": "The activity falls entirely within the approved change window CHG-2026-0415 (2026-08-05T04:00:00Z – 07:00:00Z), which explains the out-of-hours timing. The total rows exported (1500) are well below the principal's typical daily baseline of 3947 rows. No sensitive columns were touched: the contracts query selected only contract_id, tender_id, vendor_id, awarded_amount, and status, while the vendors query selected only vendor_id, legal_name, and risk_rating—excluding the sensitive bank_account and tax_id columns. The source address 10.20.4.62 is in the principal's usual set, and the detector's own score (0.075) is very low. This is approved, in-scope reporting work and no intervention is warranted.",
+   "language": "none",
+   "script": "",
+   "rollback": "",
+   "stated_confidence": "high"
+  }
+ ],
+ "note": "Re-rating package: the original digest omitted detector, teleport_roles and department, which the model prompt contained. Re-code each artefact against this complete digest with the same ordered procedure."
+}
