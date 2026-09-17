@@ -104,7 +104,6 @@ Software and data:
   title   = {Zero-Trust {SOAR} Remediation Testbed: synthetic {Teleport} database-access corpus, {LLM} remediation artefacts and blind ratings},
   year    = {2026},
   version = {1.0.0},
-  doi     = {10.5281/zenodo.XXXXXXX},
   url     = {https://github.com/haposan06/zt-soar-remediation-testbed}
 }
 ```
